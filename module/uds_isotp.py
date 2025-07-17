@@ -3,7 +3,7 @@ import can
 import time
 
 
-WAIT_RESPONSE_TIME = 0.05 # unit: Sec 
+WAIT_RESPONSE_TIME = 0.5 # unit: Sec 
 
 # Dict for CAN IDs and their corresponding IDs
 Response_ID = {
@@ -44,6 +44,8 @@ class UDSMessage:
         self.FailDetection(stack) # if failed, it will set self.failed to True
         self.ECUReset(stack) # reset ECU after sending TESTcase
         return self.failed
+        
+        
         
     
     def StartDiagnosticMode(self, stack):
@@ -94,12 +96,12 @@ class UDSMessage:
                 response = stack.recv() 
 
         # send valid request 0x22..
-        send_data = [0x22, 0xF1, 0x90] # VIN Request(valid request)
+        send_data = [0x10, 0x01] # VIN Request(valid request)
         stack.send(bytes(send_data))
-        if not self.wait_response(stack, [0x62, 0xF1, 0x90]): # VIN Response
+        if not self.wait_response(stack, [0x50, 0x01]): # VIN Response 
             self.failed = True
         
-
+        
         '''
         하나 센드센드
         대기
