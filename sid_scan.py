@@ -4,8 +4,8 @@ import time
 import csv
 
 # 설정값
-TX_ID = 0x7E0
-RX_ID = 0x7E8
+TX_ID = 0x74C
+RX_ID = 0x7B6
 VCAN_IF = 'can0'
 TIMEOUT = 1.0
 REQUEST_PAYLOAD = b'\x00\x00'
@@ -30,9 +30,30 @@ def analyze_response(resp: bytes, sid: int) -> str:
 # CAN 통신 초기화
 bus = can.interface.Bus(channel=VCAN_IF, bustype='socketcan')
 addr = isotp.Address(isotp.AddressingMode.Normal_11bits, txid=TX_ID, rxid=RX_ID)
-stack = isotp.CanStack(bus=bus, address=addr)
+stack = isotp.CanStack(
+    bus=bus,
+    address=addr,
+    params={
+        'tx_padding': 0xFF
+    }
+)
 
-print("진단 세션 진입 시도 (0x10 0x03)...")
+print("sending (0x3E 0x00)...")
+stack.send(b'\x3E\x00')
+stack.send(b'\x3E\x00')
+start_time = time.time()
+response = None
+  
+while time.time() - start_time < TIMEOUT:
+    stack.process()
+    if stack.available():
+        print("avail")
+        response = stack.recv()
+        print(response)
+        break
+    time.sleep(0.005)
+
+print("sending (0x10 0x03)...")
 
 # Step 1. 진단 세션 진입
 stack.send(b'\x10\x03')
@@ -42,15 +63,17 @@ response = None
 while time.time() - start_time < TIMEOUT:
     stack.process()
     if stack.available():
+        print("avail")
         response = stack.recv()
+        print(list(response))
         break
     time.sleep(0.01)
 
 # 응답 확인
-if response and len(response) >= 2 and response[0] == 0x50 and response[1] == 0x03:
-    print("→ 진단 세션 진입 성공!\n")
+if response:
+    print(response)
 else:
-    print("→ 진단 세션 진입 실패. 테스트 종료.")
+    print("→ fail.")
     bus.shutdown()
     exit()
 
@@ -59,7 +82,7 @@ print("SID 탐색 시작...\n")
 results = []
 
 try:
-    for sid in range(0xFF, 0x3F, -1):  # FF부터 40까지 감소
+    for sid in range(0xFF, 0x00, -1):  # FF부터 40까지 감소
         if sid == 0x3F:
             continue  # 0x3F는 Reserved SID
 
