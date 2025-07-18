@@ -4,7 +4,7 @@ import can
 import time
 from collections import deque
 from module.uds_isotp import UDSMessage
-from module.mutator import mutate_records
+from module.mutator import mutate_records #import mutator로 바꾸야하나요??
 
 result_csv_path = "result.csv"
 # depth level for mutation
@@ -12,7 +12,7 @@ MAX_DEPTH = 3
 
 def read_uds_records_from_csv(path: str):
 
-   records = []
+    records = []
     with open(path, newline='') as f:
         reader = csv.reader(f)
         for row in reader:
@@ -77,7 +77,7 @@ def main():
         fail_detection = msg.CheckUDSMessage()
         
         # Mutate records
-        mutated_records = mutate_records(udsid, sid, data) #임의함수
+        mutated_records = mutate_records(udsid, sid, data) #임의함수 
 
         #  If fail detection is True
         if fail_detection:
@@ -93,9 +93,8 @@ def main():
         else: 
             # Depth Check
             if depth < MAX_DEPTH:
-                for m_udsid, m_sid, m_data in mutated_records:
-                
-                dq.append((m_udsid, m_sid, m_data, depth + 1))
+                for m_udsid, m_sid, m_data in mutated_records:        
+                    dq.append((m_udsid, m_sid, m_data, depth + 1))
             
     # Flush remaining buffer
     flush_buffer()

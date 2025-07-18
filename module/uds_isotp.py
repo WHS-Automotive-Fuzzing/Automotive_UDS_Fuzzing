@@ -9,10 +9,9 @@ WAIT_RESPONSE_TIME = 0.5 # unit: Sec
 Response_ID = {
     0x73E: 0x7A8, # UDS LOCK
     0x70E: 0x778, # UDS WIPER
-    0x74C: 0x7B6, # UDS DRIVER SEAT // 응답이 0x7B6인 것 같은데!? 바꿔도 됨??? 바꿨음!! 원래 78D로 되어있었음 ty
+    0x74C: 0x7B6, # UDS DRIVER SEAT 
     0x723: 0x78D, # UDS TRUNK OPEN
     0x17FC0084: 0x17FE0084, #UDS SUNROOF
-
 }
 
 class UDSMessage:
@@ -47,7 +46,7 @@ class UDSMessage:
         
         
         
-    
+    # Function: initial UDS message to start diagnostic mode
     def StartDiagnosticMode(self, stack):
         # 0x3E 0x00
         retry = 0
@@ -133,7 +132,7 @@ class UDSMessage:
         
         '''
         
-
+    # Function: Wait for response for WAIT_RESPONSE_TIME seconds
     def wait_response(self, stack, expected_data, timeout=WAIT_RESPONSE_TIME):
         """
         stack: isotp.CanStack 객체
@@ -151,6 +150,7 @@ class UDSMessage:
             time.sleep(0.01)
         return False
 
+    # Function: Reset the target ECU
     def ECUReset(self, stack):
         retry = 0
         while retry < 3:

@@ -33,12 +33,10 @@ def bitflip2(data):
 
         for j in range(2):
         
-        idx = (idx + j) % total_bits
-        byte_index = idx // 8
-        bit_index = idx % 8
-        data[byte_index] ^= (1 << bit_index)
-
-
+            idx = (idx + j) % total_bits
+            byte_index = idx // 8
+            bit_index = idx % 8
+            data[byte_index] ^= (1 << bit_index)
 
     return data
 
@@ -52,10 +50,10 @@ def bitflip4(data):
 
         for j in range(2):
         
-        idx = (idx + j) % total_bits
-        byte_index = idx // 8
-        bit_index = idx % 8
-        data[byte_index] ^= (1 << bit_index)
+            idx = (idx + j) % total_bits
+            byte_index = idx // 8
+            bit_index = idx % 8
+            data[byte_index] ^= (1 << bit_index)
 
     return data
 
@@ -195,14 +193,24 @@ def randombytes(data):
 
 def deletebytes(data):
     # delete random consecutive bytes in data
-    how_many_deletes = random.randint(1, MAX_MUTATION_PER_LOGIC)
-    for i in range(how_many_deletes):
+    random_bytes = random.randint(1, MAX_MUTATION_PER_LOGIC)
+    how_many_bytes = min(random_bytes, len(data))
 
-        for j in len(data):
-            
+    idx = random.randint(0, len(data) - how_many_bytes)  # 범위 보장
+
+    del data[idx:idx + how_many_bytes] 
+    return data 
+
+        
 
 def insertbytes(data):
-  
+
+    random_bytes = random.randint(1, MAX_MUTATION_PER_LOGIC)
+    idx = random.randrange(len(data))
+    for i in range(random_bytes):
+        data.insert(idx , random.randint(0, 255))
+
+    return data
 
 def call_muatate(cnt, data):
     match cnt:
@@ -226,7 +234,7 @@ def call_muatate(cnt, data):
         
 def mutator(data):
     target_logic = random.randint(1, 0b1000000000000000)
-    new_data=data
+    new_data=data.copy()
     cnt=0
 
     while target_logic>>cnt:
