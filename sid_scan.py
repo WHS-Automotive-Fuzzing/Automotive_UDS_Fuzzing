@@ -82,7 +82,7 @@ print("SID 탐색 시작...\n")
 results = []
 
 try:
-    for sid in range(0xFF, 0x00, -1):  # FF부터 40까지 감소
+    for sid in range(0xFF, 0x00, -1):  # FF부터 01까지 감소
         if sid == 0x3F:
             continue  # 0x3F는 Reserved SID
 
