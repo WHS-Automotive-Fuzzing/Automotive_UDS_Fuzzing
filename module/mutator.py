@@ -241,7 +241,7 @@ def call_muatate(cnt, data):
 def mutator(data):
     new_data_list = []
     mutate_n = random.randint(1, MAX_MUATATION_TIME)
-    while n:
+    while mutate_n:
         target_logic = random.randint(1, 0b1000000000000000)
         new_data=data.copy()
         cnt=0
@@ -252,5 +252,5 @@ def mutator(data):
                 new_data = call_muatate(cnt, new_data)
             cnt += 1
         new_data_list.append(new_data)
-        n -= 1
+        mutate_n -= 1
     return new_data_list

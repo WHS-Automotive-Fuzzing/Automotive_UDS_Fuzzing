@@ -10,7 +10,9 @@ Response_ID = {
     0x73E: 0x7A8, # UDS LOCK
     0x70E: 0x778, # UDS WIPER
     0x74C: 0x7B6, # UDS DRIVER SEAT 
-    0x723: 0x78D, # UDS TRUNK OPEN
+    0x723: 0x78D, # UDS TRUNK OPEN,
+    0x74B: 0x7B5,
+    0x74A: 0x7B4,
     0x17FC0084: 0x17FE0084, #UDS SUNROOF
 }
 
@@ -39,7 +41,7 @@ class UDSMessage:
         }
         stack = isotp.CanStack(bus = self.bus, address = addr, params = params)
         
-        print(f"[{hex(self.uds_id)}][{hex(self.sid)}]: Sending UDS Message: [{hex(x) for x in self.data}]")
+        print(f"[{hex(self.uds_id)}][{hex(self.sid)}]: Sending UDS Message: [{self.data}]")
 
         while not self.diagnosticmodefail:
             self.StartDiagnosticMode(stack)
@@ -120,7 +122,7 @@ class UDSMessage:
                 response = stack.recv()
                 # check response data
                 if response[:len(expected_data)] == bytes(expected_data):
-                    print(list(response))
+                    #print(list(response))
                     return True
             time.sleep(0.01)
         return False

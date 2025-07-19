@@ -79,7 +79,7 @@ def main():
         
         # Mutate records
         #print("before: ", data)
-        mutated_data = mutator(data) 
+        mutated_data_list = mutator(data) 
         #print("after: ", mutated_data)
         #  If fail detection is True
         if fail_detection:
@@ -88,14 +88,14 @@ def main():
             save_result(udsid, sid, data)
 
             # Give priority to the mutated record
-   
-            dq.appendleft((udsid, sid, mutated_data, 0))
+            for mutated_data in mutated_data_list:
+                dq.appendleft((udsid, sid, mutated_data, 0))
         
-
         else: 
             # Depth Check
             if depth < MAX_DEPTH:
-                dq.append((udsid, sid, mutated_data, depth + 1))
+                for mutated_data in mutated_data_list:
+                dq.appendleft((udsid, sid, mutated_data, depth + 1))
             
     # Flush remaining buffer
     flush_buffer()
