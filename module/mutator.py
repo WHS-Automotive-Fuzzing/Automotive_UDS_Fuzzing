@@ -1,17 +1,18 @@
 import can
 import random
 import isotp
-import uds_isotp
+from module.uds_isotp import *
 import time
 
-MAX_MUTATION_PER_LOGIC = 5
-
+MAX_MUTATION_PER_LOGIC = 4
+MAX_MUATATION_TIME = 3
 
 def bitflip1(data):
     #flip 1 random bit in data
-
+    #print("bitflip1")
     total_bits = len(data) * 8
-
+    
+    #print(data)
     how_many_flips = random.randint(1, MAX_MUTATION_PER_LOGIC)
     for i in range(how_many_flips):
 
@@ -19,7 +20,7 @@ def bitflip1(data):
         byte_index = idx // 8
         bit_index = idx % 8
         data[byte_index] ^= (1 << bit_index)
-
+    #print(data)
     return data
 
 def bitflip2(data): 
@@ -196,20 +197,25 @@ def deletebytes(data):
     random_bytes = random.randint(1, MAX_MUTATION_PER_LOGIC)
     how_many_bytes = min(random_bytes, len(data))
 
-    idx = random.randint(0, len(data) - how_many_bytes)  # 범위 보장
+    idx = random.randint(0, len(data) - how_many_bytes)  # 踰붿쐞 蹂댁옣
 
-    del data[idx:idx + how_many_bytes] 
+    del data[idx:idx + how_many_bytes-1] 
     return data 
 
         
 
 def insertbytes(data):
 
+    # Ensure the data is not empty
+    if len(data) == 0:
+        return data  # Return the data unchanged if it's empty
+    
     random_bytes = random.randint(1, MAX_MUTATION_PER_LOGIC)
-    idx = random.randrange(len(data))
+    idx = random.randrange(len(data))  # Only execute if data is not empty
+    
     for i in range(random_bytes):
-        data.insert(idx , random.randint(0, 255))
-
+        data.insert(idx, random.randint(0, 255))  # Insert random bytes
+    
     return data
 
 def call_muatate(cnt, data):
@@ -233,13 +239,18 @@ def call_muatate(cnt, data):
         
         
 def mutator(data):
-    target_logic = random.randint(1, 0b1000000000000000)
-    new_data=data.copy()
-    cnt=0
-
-    while target_logic>>cnt:
-        if (target_logic>>cnt) & 0b1:
-            new_data = call_muatate(cnt, new_data)
-        cnt += 1
-    
-    return new_data
+    new_data_list = []
+    mutate_n = random.randint(1, MAX_MUATATION_TIME)
+    while n:
+        target_logic = random.randint(1, 0b1000000000000000)
+        new_data=data.copy()
+        cnt=0
+        #print(bin(target_logic))
+        while target_logic>>cnt:
+            
+            if (target_logic>>cnt) & 0b1:
+                new_data = call_muatate(cnt, new_data)
+            cnt += 1
+        new_data_list.append(new_data)
+        n -= 1
+    return new_data_list

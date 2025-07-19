@@ -4,7 +4,7 @@ import time
 
 
 WAIT_RESPONSE_TIME = 0.5 # unit: Sec 
-
+RESET_SLEEP_TIME = 0.07
 # Dict for CAN IDs and their corresponding IDs
 Response_ID = {
     0x73E: 0x7A8, # UDS LOCK
@@ -28,13 +28,18 @@ class UDSMessage:
         '''variables'''
         # start_time = None # unit: Sec
         #end_time = None
-        failed = False
+        self.failed = False
     
     # Function: Cheeck Send&Recv UDS Message
     # sends a UDS Message and checks a response
     def CheckUDSMessage(self): 
         addr = isotp.Address(isotp.AddressingMode.Normal_11bits, txid=self.udsid, rxid=Response_ID[self.udsid])
-        stack = isotp.CanStack(bus = self.bus, address = addr)
+        params = {
+            "tx_padding": 0xFF
+        }
+        stack = isotp.CanStack(bus = self.bus, address = addr, params = params)
+        
+        print(f"[{hex(self.uds_id)}][{hex(self.sid)}]: Sending UDS Message: [{hex(x) for x in self.data}]")
 
         while not self.diagnosticmodefail:
             self.StartDiagnosticMode(stack)
@@ -52,13 +57,13 @@ class UDSMessage:
         retry = 0
         while retry < 3:
             stack.send(bytes([0x3E, 0x00]))
+            stack.send(bytes([0x3E, 0x00]))
             if self.wait_response(stack, [0x7E, 0x00]):
                 break
             retry += 1
 
         if retry==3:
-            print("no response 3E 00")
-            self.diagnosticmodefail = True
+            print(f"["+hex(self.udsid)+f"]["+hex(self.sid)+f"]: no response 3E 00")
 
         # 0x10 0x03 
         retry = 0
@@ -69,9 +74,9 @@ class UDSMessage:
             retry += 1
         
         if retry == 3:
-            print("no response 10 03")
-            self.diagnosticmodefail = True
-
+            print(f"["+hex(self.udsid)+f"]["+hex(self.sid)+f"]: no response 10 03")
+ 
+        self.diagnosticmodefail = True
 
         
     
@@ -101,41 +106,10 @@ class UDSMessage:
             self.failed = True
         
         
-        '''
-        하나 센드센드
-        대기
-        응답받기
-        if 어쩃든 응답이 옴:
-            valid request를 보내
-            대기
-            if 요상한 응답:
-                self.failed = True
-            return self.fai함수 종료
-        else 시간초과(응답없음):
-            valid request를 보내
-            대기
-            if 요상한 응답:
-                self.failed = True
-        return self.failed
-        '''
-        
-        
-        '''
-        if 응답 :
-            NRC코드 확인
-        else : 
-        
-        valid req
-        
-        self.valid = wait response (expected)
-
-        
-        '''
-        
     # Function: Wait for response for WAIT_RESPONSE_TIME seconds
     def wait_response(self, stack, expected_data, timeout=WAIT_RESPONSE_TIME):
         """
-        stack: isotp.CanStack 객체
+        stack: isotp.CanStack 媛앹껜
         expected_data: list of expected data bytes
         timeout: unit :Sec (default = 2)
         """
@@ -146,6 +120,7 @@ class UDSMessage:
                 response = stack.recv()
                 # check response data
                 if response[:len(expected_data)] == bytes(expected_data):
+                    print(list(response))
                     return True
             time.sleep(0.01)
         return False
@@ -156,7 +131,8 @@ class UDSMessage:
         while retry < 3:
             stack.send(bytes([0x11, 0x02]))
             if self.wait_response(stack, [0x51, 0x02]):
+                time.sleep(RESET_SLEEP_TIME)
                 break
             retry += 1
             if retry == 3:
-                print("no response 11 02")
+                print(f"["+hex(self.udsid)+f"]["+hex(self.sid)+f"]: no response 11 02")

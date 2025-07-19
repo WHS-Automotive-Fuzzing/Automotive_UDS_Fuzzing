@@ -3,20 +3,22 @@ import csv
 import can
 import time
 from collections import deque
-from module.uds_isotp import UDSMessage
-from module.mutator import mutate_records #import mutator로 바꾸야하나요??
+from module.uds_isotp import *
+from module.mutator import *
 
 result_csv_path = "result.csv"
 # depth level for mutation
 MAX_DEPTH = 3
+buffer = []
 
 def read_uds_records_from_csv(path: str):
 
     records = []
     with open(path, newline='') as f:
         reader = csv.reader(f)
+        next(reader, None)
         for row in reader:
-            if not row or len(row) < 3:
+            if not row or len(row) < 3 :
                 continue
             udsid = int(row[0].strip(), 16)
             sid   = int(row[1].strip(), 16)
@@ -28,7 +30,7 @@ def read_uds_records_from_csv(path: str):
 def save_result(udsid, sid, data):
     global buffer
     buffer.append([udsid, sid] + data)
-    if len(buffer) >= 100:
+    if len(buffer) >= 1:
         with open(result_csv_path, "a", newline='') as f:
             writer = csv.writer(f)
             writer.writerows(buffer)
@@ -73,12 +75,12 @@ def main():
         
         msg = UDSMessage(udsid, sid, data, depth, bus)
 
-        
         fail_detection = msg.CheckUDSMessage()
         
         # Mutate records
-        mutated_records = mutate_records(udsid, sid, data) #임의함수 
-
+        #print("before: ", data)
+        mutated_data = mutator(data) 
+        #print("after: ", mutated_data)
         #  If fail detection is True
         if fail_detection:
 
@@ -86,16 +88,18 @@ def main():
             save_result(udsid, sid, data)
 
             # Give priority to the mutated record
-            for m_udsid, m_sid, m_data in mutated_records:
-                dq.appendleft((m_udsid, m_sid, m_data, 0))
+   
+            dq.appendleft((udsid, sid, mutated_data, 0))
         
 
         else: 
             # Depth Check
             if depth < MAX_DEPTH:
-                for m_udsid, m_sid, m_data in mutated_records:        
-                    dq.append((m_udsid, m_sid, m_data, depth + 1))
+                dq.append((udsid, sid, mutated_data, depth + 1))
             
     # Flush remaining buffer
     flush_buffer()
 
+
+if __name__ == "__main__":
+    main()
