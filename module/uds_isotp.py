@@ -34,17 +34,21 @@ class UDSMessage:
     
     # Function: Cheeck Send&Recv UDS Message
     # sends a UDS Message and checks a response
-    def CheckUDSMessage(self): 
+    def CheckUDSMessage(self):
         addr = isotp.Address(isotp.AddressingMode.Normal_11bits, txid=self.udsid, rxid=Response_ID[self.udsid])
         params = {
             "tx_padding": 0xFF
         }
         stack = isotp.CanStack(bus = self.bus, address = addr, params = params)
         
-        print(f"[{hex(self.uds_id)}][{hex(self.sid)}]: Sending UDS Message: [{self.data}]")
+        print(f"[{hex(self.udsid)}][{hex(self.sid)}]: Sending UDS Message: [{self.data}]")
 
-        while not self.diagnosticmodefail:
-            self.StartDiagnosticMode(stack)
+        self.StartDiagnosticMode(stack)
+        
+        if self.diagnosticmodefail:
+            print(f"진단세션도 못들어간 허접프레임: [{hex(self.udsid)}][{hex(self.sid)}] [{self.data}]")
+            self.ECUReset(stack)
+            return False
         
         
         self.FailDetection(stack) # if failed, it will set self.failed to True
@@ -66,6 +70,8 @@ class UDSMessage:
 
         if retry==3:
             print(f"["+hex(self.udsid)+f"]["+hex(self.sid)+f"]: no response 3E 00")
+            self.diagnosticmodefail = True
+            return 
 
         # 0x10 0x03 
         retry = 0
@@ -77,8 +83,9 @@ class UDSMessage:
         
         if retry == 3:
             print(f"["+hex(self.udsid)+f"]["+hex(self.sid)+f"]: no response 10 03")
+            self.diagnosticmodefail = True
+            return
  
-        self.diagnosticmodefail = True
 
         
     
@@ -99,7 +106,7 @@ class UDSMessage:
         while time.time() - s_time < WAIT_RESPONSE_TIME:
             stack.process()
             if stack.available():
-                response = stack.recv() 
+                response = stack.recv()  
 
         # send valid request 0x22..
         send_data = [0x10, 0x01] # VIN Request(valid request)
