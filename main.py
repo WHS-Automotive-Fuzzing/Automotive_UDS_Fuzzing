@@ -95,7 +95,7 @@ def main():
             # Depth Check
             if depth < MAX_DEPTH:
                 for mutated_data in mutated_data_list:
-                    dq.appendleft((udsid, sid, mutated_data, depth + 1))
+                    dq.append((udsid, sid, mutated_data, depth + 1))
             
     # Flush remaining buffer
     flush_buffer()
