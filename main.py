@@ -31,6 +31,7 @@ def read_uds_records_from_csv(path: str):
 
 def save_result(udsid, sid, data):
     global buffer
+    hex_row = [f"{udsid:03X}", f"{sid:02X}"] + [f"{byte:02X}" for byte in data]
     buffer.append([udsid, sid] + data)
     if len(buffer) >= 10:
         with open(result_csv_path, "a", newline='') as f:
@@ -53,6 +54,7 @@ def save_and_exit(signum, frame):
             writer = csv.writer(f)
             writer.writerows(buffer)
         buffer.clear()
+        sys.exit(0)
 
 def main():
     # Path for seed
