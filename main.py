@@ -2,6 +2,8 @@ import isotp
 import csv
 import can
 import time
+import signal
+import sys
 from collections import deque
 from module.uds_isotp import *
 from module.mutator import *
@@ -30,7 +32,7 @@ def read_uds_records_from_csv(path: str):
 def save_result(udsid, sid, data):
     global buffer
     buffer.append([udsid, sid] + data)
-    if len(buffer) >= 1:
+    if len(buffer) >= 10:
         with open(result_csv_path, "a", newline='') as f:
             writer = csv.writer(f)
             writer.writerows(buffer)
@@ -44,14 +46,19 @@ def flush_buffer():
             writer.writerows(buffer)
         buffer.clear()
 
-
+def save_and_exit(signum, frame):
+    with open(result_csv_path, "a", neline='') as f:
+        writer = csv.writer(f)
+        writer.writerows(buffer)
+    buffer.clear()
 
 def main():
     # Path for seed
     seed_csv_path = "seed.csv"
     # Path for result
     result_csv_path = "result.csv"
-
+    # save data when SIGINT occur
+    signal.signal(siganl.SIGINT, save_and_exit)
     # Result Header
     with open(result_csv_path, "w", newline='') as f:
         writer = csv.writer(f)
@@ -63,24 +70,16 @@ def main():
     # Read UDS records from CSV
     records = read_uds_records_from_csv(seed_csv_path)
 
-    
-
-
-    dq = deque(records)
-    
+    dq = deque(records)    
     
     while dq:
-
         udsid, sid, data, depth = dq.popleft()
-        
         msg = UDSMessage(udsid, sid, data, depth, bus)
-
         fail_detection = msg.CheckUDSMessage()
         
         # Mutate records
-        #print("before: ", data)
         mutated_data_list = mutator(data) 
-        #print("after: ", mutated_data)
+
         #  If fail detection is True
         if fail_detection:
 

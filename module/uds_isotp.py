@@ -46,7 +46,7 @@ class UDSMessage:
         self.StartDiagnosticMode(stack)
         
         if self.diagnosticmodefail:
-            print(f"진단세션도 못들어간 허접프레임: [{hex(self.udsid)}][{hex(self.sid)}] [{self.data}]")
+            print(f"diagnostic fail: [{hex(self.udsid)}][{hex(self.sid)}] [{self.data}]")
             self.ECUReset(stack)
             return False
         
@@ -118,7 +118,7 @@ class UDSMessage:
     # Function: Wait for response for WAIT_RESPONSE_TIME seconds
     def wait_response(self, stack, expected_data, timeout=WAIT_RESPONSE_TIME):
         """
-        stack: isotp.CanStack 媛앹껜
+        stack: isotp.CanStack
         expected_data: list of expected data bytes
         timeout: unit :Sec (default = 2)
         """
