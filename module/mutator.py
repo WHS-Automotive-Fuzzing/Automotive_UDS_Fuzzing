@@ -245,7 +245,7 @@ def mutator(data):
         target_logic = random.randint(1, 0b1000000000000000)
         new_data=data.copy()
         cnt=0
-        #print(bin(target_logic))
+
         while target_logic>>cnt:
             
             if (target_logic>>cnt) & 0b1:
