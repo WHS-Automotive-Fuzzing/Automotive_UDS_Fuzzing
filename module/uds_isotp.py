@@ -4,7 +4,7 @@ import time
 
 
 WAIT_RESPONSE_TIME = 0.5 # unit: Sec 
-RESET_SLEEP_TIME = 0.07
+RESET_SLEEP_TIME = 0.01
 # Dict for CAN IDs and their corresponding IDs
 Response_ID = {
     0x73E: 0x7A8, # UDS LOCK
@@ -27,11 +27,16 @@ class UDSMessage:
         self.depth = depth
         self.bus = bus
         self.diagnosticmodefail = False
-        '''variables'''
-        # start_time = None # unit: Sec
-        #end_time = None
+        
+        self.error_detected = False
         self.failed = False
     
+    def error_handler(e):
+        if isinstance(e, isotp.errors.FlowControlTimeoutError):
+            print(f"[{self.udsid}][{self.sid}] [Depth: {self.depth}] Flow Control Error: ", e)
+            self.error_detected = True
+        
+
     # Function: Cheeck Send&Recv UDS Message
     # sends a UDS Message and checks a response
     def CheckUDSMessage(self):
@@ -39,7 +44,7 @@ class UDSMessage:
         params = {
             "tx_padding": 0xFF
         }
-        stack = isotp.CanStack(bus = self.bus, address = addr, params = params)
+        stack = isotp.CanStack(bus = self.bus, address = addr, params = params, error_handler=error_handler)
         
         print(f"[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] Sending UDS Message: [{self.data}]")
 
@@ -101,15 +106,8 @@ class UDSMessage:
         # send Testcase
         send_data = [self.sid] + self.data
         
-        try:
-            stack.send(bytes(send_data))
-        except isotp.errors.FlowControlTimeoutError as e:
-            print(f"[{self.udsid}][{self.sid}][Depth: {self.depth}] FlowControlTimeoutError: {e}")
-            return False
-        except Exception as e:
-            print(f"[{self.udsid}][{self.sid}][Depth: {self.depth}] Exception: {e}")
-            return False
-        
+        stack.send(bytes(send_data))
+
         # wait for response
         s_time = time.time()
         while time.time() - s_time < WAIT_RESPONSE_TIME:

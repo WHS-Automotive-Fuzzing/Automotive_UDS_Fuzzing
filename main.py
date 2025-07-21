@@ -10,7 +10,7 @@ from module.mutator import *
 
 result_csv_path = "result.csv"
 # depth level for mutation
-MAX_DEPTH = 3
+MAX_DEPTH = 10
 buffer = []
 
 def read_uds_records_from_csv(path: str):
