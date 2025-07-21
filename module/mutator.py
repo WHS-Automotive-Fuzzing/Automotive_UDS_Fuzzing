@@ -205,7 +205,6 @@ def deletebytes(data):
         
 
 def insertbytes(data):
-
     # Ensure the data is not empty
     if len(data) == 0:
         return data  # Return the data unchanged if it's empty
@@ -246,8 +245,7 @@ def mutator(data):
         new_data=data.copy()
         cnt=0
 
-        while target_logic>>cnt:
-            
+        while target_logic>>cnt:            
             if (target_logic>>cnt) & 0b1:
                 new_data = call_muatate(cnt, new_data)
             cnt += 1

@@ -58,7 +58,7 @@ def main():
     # Path for result
     result_csv_path = "result.csv"
     # save data when SIGINT occur
-    signal.signal(siganl.SIGINT, save_and_exit)
+    signal.signal(signal.SIGINT, save_and_exit)
     # Result Header
     with open(result_csv_path, "w", newline='') as f:
         writer = csv.writer(f)
