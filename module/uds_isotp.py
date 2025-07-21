@@ -100,18 +100,25 @@ class UDSMessage:
 
         # send Testcase
         send_data = [self.sid] + self.data
-        stack.send(bytes(send_data))
         
+        try:
+            stack.send(bytes(send_data))
+        except isotp.errors.FlowControlTimeoutError as e:
+            print(f"[{self.udsid}][{self.sid}][Depth: {self.depth}] FlowControlTimeoutError: {e}")
+            return False
+        except Exception as e:
+            print(f"[{self.udsid}][{self.sid}][Depth: {self.depth}] Exception: {e}")
+            return False
         s_time = time.time()
         while time.time() - s_time < WAIT_RESPONSE_TIME:
             stack.process()
             if stack.available():
                 response = stack.recv()  
 
-        # send valid request 0x22..
-        send_data = [0x10, 0x01] # VIN Request(valid request)
+        # send valid request 0x10..
+        send_data = [0x10, 0x01] # valid request
         stack.send(bytes(send_data))
-        if not self.wait_response(stack, [0x50, 0x01]): # VIN Response 
+        if not self.wait_response(stack, [0x50, 0x01]): # Vaild Response 
             self.failed = True
         
         
