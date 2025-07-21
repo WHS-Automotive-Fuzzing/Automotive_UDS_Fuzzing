@@ -39,7 +39,7 @@ def save_result(udsid, sid, data):
         buffer.clear()
 
 def flush_buffer():
-    
+    global buffer
     if buffer:
         with open(result_csv_path, "a", newline='') as f:
             writer = csv.writer(f)
@@ -47,10 +47,12 @@ def flush_buffer():
         buffer.clear()
 
 def save_and_exit(signum, frame):
-    with open(result_csv_path, "a", neline='') as f:
-        writer = csv.writer(f)
-        writer.writerows(buffer)
-    buffer.clear()
+    global buffer
+    if buffer:
+        with open(result_csv_path, "a", newline='') as f:
+            writer = csv.writer(f)
+            writer.writerows(buffer)
+        buffer.clear()
 
 def main():
     # Path for seed
