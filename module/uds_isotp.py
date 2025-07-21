@@ -109,6 +109,8 @@ class UDSMessage:
         except Exception as e:
             print(f"[{self.udsid}][{self.sid}][Depth: {self.depth}] Exception: {e}")
             return False
+        
+        # wait for response
         s_time = time.time()
         while time.time() - s_time < WAIT_RESPONSE_TIME:
             stack.process()
