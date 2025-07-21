@@ -82,7 +82,7 @@ def main():
 
         #  If fail detection is True
         if fail_detection:
-
+            print(f"Fail Detected! [{hex(udsid)}][{hex(sid)}] [Depth: {depth}] [{data}]")
             # Save Result 
             save_result(udsid, sid, data)
 

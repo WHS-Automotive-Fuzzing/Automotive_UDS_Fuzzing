@@ -41,12 +41,12 @@ class UDSMessage:
         }
         stack = isotp.CanStack(bus = self.bus, address = addr, params = params)
         
-        print(f"[{hex(self.udsid)}][{hex(self.sid)}]: Sending UDS Message: [{self.data}]")
+        print(f"[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] Sending UDS Message: [{self.data}]")
 
         self.StartDiagnosticMode(stack)
         
         if self.diagnosticmodefail:
-            print(f"diagnostic fail: [{hex(self.udsid)}][{hex(self.sid)}] [{self.data}]")
+            print(f"diagnostic fail: [{hex(self.udsid)}][{hex(self.sid)}] [{self.data}] [Depth: {self.depth}]")
             self.ECUReset(stack)
             return False
         
