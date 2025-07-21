@@ -31,11 +31,14 @@ class UDSMessage:
         self.error_detected = False
         self.failed = False
     
-    def error_handler(e):
+    def error_handler(self, e):
         if isinstance(e, isotp.errors.FlowControlTimeoutError):
             print(f"[{self.udsid}][{self.sid}] [Depth: {self.depth}] Flow Control Error: ", e)
             self.error_detected = True
-        
+        else:
+            print(f"[{self.udsid}][{self.sid}] [Depth: {self.depth}] Error: ", e)
+        # print(f"[{self.udsid}][{self.sid}] [Depth: {self.depth}] Error: ", e)
+        # self.error_detected = True
 
     # Function: Cheeck Send&Recv UDS Message
     # sends a UDS Message and checks a response
@@ -44,7 +47,7 @@ class UDSMessage:
         params = {
             "tx_padding": 0xFF
         }
-        stack = isotp.CanStack(bus = self.bus, address = addr, params = params, error_handler=error_handler)
+        stack = isotp.CanStack(bus = self.bus, address = addr, params = params, error_handler=self.error_handler)
         
         print(f"[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] Sending UDS Message: [{self.data}]")
 
@@ -53,15 +56,13 @@ class UDSMessage:
         if self.diagnosticmodefail:
             print(f"diagnostic fail: [{hex(self.udsid)}][{hex(self.sid)}] [{self.data}] [Depth: {self.depth}]")
             self.ECUReset(stack)
-            return False
+            return self.failed
         
         
         self.FailDetection(stack) # if failed, it will set self.failed to True
         self.ECUReset(stack) # reset ECU after sending TESTcase
         return self.failed
-        
-        
-        
+           
     # Function: initial UDS message to start diagnostic mode
     def StartDiagnosticMode(self, stack):
         # 0x3E 0x00
@@ -90,10 +91,7 @@ class UDSMessage:
             print(f"["+hex(self.udsid)+f"]["+hex(self.sid)+f"]: no response 10 03")
             self.diagnosticmodefail = True
             return
- 
-
-        
-    
+     
     def FailDetection(self, stack):
         '''
         FailDetection based on time
@@ -113,15 +111,18 @@ class UDSMessage:
         while time.time() - s_time < WAIT_RESPONSE_TIME:
             stack.process()
             if stack.available():
-                response = stack.recv()  
+                response = stack.recv()
+            time.sleep(0.01) 
 
+        if self.error_detected:
+            return
+        
         # send valid request 0x10..
         send_data = [0x10, 0x01] # valid request
         stack.send(bytes(send_data))
-        if not self.wait_response(stack, [0x50, 0x01]): # Vaild Response 
+        if not self.wait_response(stack, [0x50, 0x01]): # Check valid Response 
             self.failed = True
-        
-        
+                
     # Function: Wait for response for WAIT_RESPONSE_TIME seconds
     def wait_response(self, stack, expected_data, timeout=WAIT_RESPONSE_TIME):
         """
