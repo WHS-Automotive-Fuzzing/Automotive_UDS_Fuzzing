@@ -31,7 +31,9 @@ def read_uds_records_from_csv(path: str):
 
 def save_result(udsid, sid, data):
     global buffer
-    buffer.append([udsid, sid] + data)
+
+    hex_row = [f"{udsid:03X}", f"{sid:02X}"] + [f"{byte:02X}" for byte in data]
+    buffer.append(hex_row)
     if len(buffer) >= 10:
         with open(result_csv_path, "a", newline='') as f:
             writer = csv.writer(f)
