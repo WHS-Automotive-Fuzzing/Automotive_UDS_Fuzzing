@@ -33,10 +33,10 @@ class UDSMessage:
     
     def error_handler(self, e):
         if isinstance(e, isotp.errors.FlowControlTimeoutError):
-            print(f"[{self.udsid}][{self.sid}] [Depth: {self.depth}] Flow Control Error: ", e)
+            print(f"[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] Flow Control Error: ", e)
             self.error_detected = True
         else:
-            print(f"[{self.udsid}][{self.sid}] [Depth: {self.depth}] Error: ", e)
+            print(f"[{hex(self.udsid)}][{self.sid}] [Depth: {self.depth}] Error: ", e)
         # print(f"[{self.udsid}][{self.sid}] [Depth: {self.depth}] Error: ", e)
         # self.error_detected = True
 
@@ -113,14 +113,12 @@ class UDSMessage:
             if stack.available():
                 response = stack.recv()
             time.sleep(0.01) 
-
-        if self.error_detected:
-            return
         
         # send valid request 0x10..
-        send_data = [0x10, 0x01] # valid request
+        send_data = [0x10, 0x03] # valid request
         stack.send(bytes(send_data))
-        if not self.wait_response(stack, [0x50, 0x01]): # Check valid Response 
+
+        if not self.wait_response(stack, [0x50, 0x03]): # Check valid Response 
             self.failed = True
                 
     # Function: Wait for response for WAIT_RESPONSE_TIME seconds
@@ -130,6 +128,7 @@ class UDSMessage:
         expected_data: list of expected data bytes
         timeout: unit :Sec (default = 2)
         """
+
         start_time = time.time()
         while time.time() - start_time < timeout:
             stack.process()
