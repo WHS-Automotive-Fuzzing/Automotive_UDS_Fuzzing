@@ -4,7 +4,7 @@ import time
 
 
 WAIT_RESPONSE_TIME = 0.5 # unit: Sec 
-RESET_SLEEP_TIME = 0.01
+RESET_SLEEP_TIME = 0.05
 # Dict for CAN IDs and their corresponding IDs
 Response_ID = {
     0x73E: 0x7A8, # UDS LOCK
