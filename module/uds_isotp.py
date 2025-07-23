@@ -3,7 +3,9 @@ import can
 import time
 
 WAIT_RESPONSE_TIME = 0.5  # seconds
-RESET_SLEEP_TIME = 0.05
+RESET_SLEEP_TIME_DIFF_ID = 0.01
+RESET_SLEEP_TIME_SAME_ID = 0.05
+prev_udsid = 0x0000
 
 # CAN IDs and corresponding response IDs
 Response_ID = {
@@ -117,7 +119,10 @@ class UDSMessage:
         while retry < 3:
             stack.send(bytes([0x11, 0x02]))
             if self.wait_response(stack, [0x51, 0x02]):
-                time.sleep(RESET_SLEEP_TIME)
+                if self.udsid != prev_udsid:
+                    time.sleep(RESET_SLEEP_TIME_DIFF_ID)
+                else:
+                    time.sleep(RESET_SLEEP_TIME_SAME_ID)
                 break
             retry += 1
         if retry == 3:
