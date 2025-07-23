@@ -19,7 +19,7 @@ with open('result.csv', newline='') as f:
     udsid = int(row[1].strip(), 16)
     sid = int(row[2].strip(), 16)
     data = [int(cell.strip(), 16) for cell in row[3:] if cell.strip()]
-    records.append((udsid, sid, data))
+    records.append((msg_idx, udsid, sid, data))
 
 bus = can.interface.Bus(channel='can0', bustype='socketcan')
 
