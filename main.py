@@ -81,10 +81,10 @@ def main():
         writer = csv.writer(f)
         writer.writerow(['idx','udsid', 'sid', 'data'])
 
-    bus = can.interface.Bus(channel='can0', bustype='socketcan')
-
     dq1 = deque(read_uds_records_from_csv(seed_csv_path1)) # multi queue for seed1
-    d12 = deaue(read_uds_records_from_csv(seed_csv_path2)) # multi queue for seed2
+    dq2 = deque(read_uds_records_from_csv(seed_csv_path2)) # multi queue for seed2
+
+    bus = can.interface.Bus(channel='can0', bustype='socketcan')
 
     while dq1 and dq2: # when both queues are not empty
         # Process first queue
