@@ -31,7 +31,7 @@ def read_uds_records_from_csv(path: str):
 
 def save_result(msg_idx,udsid, sid, data):
     global buffer
-    hex_row = [f"{msg_idx}", f"{udsid:04X}", f"{sid:02X}"] + [f"{byte:02X}" for byte in data]
+    hex_row = [f"{msg_idx}", f"{udsid:03X}", f"{sid:02X}"] + [f"{byte:02X}" for byte in data]
     buffer.append(hex_row)
     if len(buffer) >= 10:
         with open(result_csv_path, "a", newline='') as f:
@@ -41,7 +41,7 @@ def save_result(msg_idx,udsid, sid, data):
 
 def save_log(msg_idx, udsid, sid, data):
     global send_buffer
-    hex_row = [f"{msg_idx}", f"{udsid:04X}", f"{sid:02X}"] + [f"{byte:02X}" for byte in data]
+    hex_row = [f"{msg_idx}", f"{udsid:03X}", f"{sid:02X}"] + [f"{byte:02X}" for byte in data]
     send_buffer.append(hex_row)
     if len(send_buffer) >= 10:
         with open(send_log_path, "a", newline='') as f:
@@ -75,7 +75,7 @@ def main():
 
     with open(result_csv_path, "w", newline='') as f: # result csv
         writer = csv.writer(f)
-        writer.writerow(['idx','udsid', 'sid', 'data0', 'data1', 'data2', 'data3', 'data4', 'data5', 'data6', 'data7'])
+        writer.writerow(['idx','udsid', 'sid', 'data'])
     
     with open(send_log_path, "w", newline='') as f: # send log csv
         writer = csv.writer(f)
