@@ -43,8 +43,8 @@ def save_log(msg_idx, udsid, sid, data):
     global send_buffer
     hex_row = [f"{msg_idx}", f"{udsid:04X}", f"{sid:02X}"] + [f"{byte:02X}" for byte in data]
     send_buffer.append(hex_row)
-    if len(buffer) >= 10:
-        with open(result_csv_path, "a", newline='') as f:
+    if len(send_buffer) >= 10:
+        with open(send_log_path, "a", newline='') as f:
             writer = csv.writer(f)
             writer.writerows(send_buffer)
         send_buffer.clear()
