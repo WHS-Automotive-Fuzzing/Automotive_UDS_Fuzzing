@@ -118,6 +118,7 @@ class UDSMessage:
         return False
 
     def ECUReset(self, stack):
+        global prev_udsid
         retry = 0
         while retry < 3:
             stack.send(bytes([0x11, 0x02]))
