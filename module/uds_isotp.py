@@ -94,6 +94,8 @@ class UDSMessage:
             stack.process()
             if stack.available():
                 response = stack.recv()
+                if response[0] == 0x7F and response[2] == 0x78:
+                    return
                 #print(f"[{hex(self.udsid)}][{hex(self.sid)}] Response: {response.hex()}")  # Debugging output
                 break
             time.sleep(0.01)
