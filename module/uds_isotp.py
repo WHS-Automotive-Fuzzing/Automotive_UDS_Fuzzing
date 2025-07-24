@@ -122,12 +122,12 @@ class UDSMessage:
         while retry < 3:
             stack.send(bytes([0x11, 0x02]))
             if self.wait_response(stack, [0x51, 0x02]):
-                if self.udsid != prev_udsid:
-                    time.sleep(RESET_SLEEP_TIME_DIFF_ID)
-                else:
+                if self.udsid == prev_udsid:
+                    # time.sleep(RESET_SLEEP_TIME_DIFF_ID)
                     time.sleep(RESET_SLEEP_TIME_SAME_ID)
                 break
             retry += 1
+        prev_udsid = self.udsid
         if retry == 3:
             print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 11 02")
     
