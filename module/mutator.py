@@ -5,7 +5,7 @@ from module.uds_isotp import *
 import time
 
 MAX_MUTATION_PER_LOGIC = 4
-MAX_MUATATION_TIME = 3
+MAX_MUATATION_TIME = 2
 
 def bitflip1(data):
     #flip 1 random bit in data
