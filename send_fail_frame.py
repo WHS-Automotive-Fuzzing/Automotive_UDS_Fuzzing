@@ -28,3 +28,4 @@ while records:
     msg = UDSMessage(udsid, sid, data, 0, bus)
     
     msg.Debug_fail()
+    input("Waiting...")
