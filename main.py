@@ -86,15 +86,28 @@ def main():
 
     bus = can.interface.Bus(channel='can0', bustype='socketcan')
 
+    cycle_count = 0
     while dq1 and dq2: # when both queues are not empty
+        cycle_count += 1
+        cycle_start = time.time()
+        
         # Process first queue
+        dq1_start = time.time()
         udsid, sid, data, depth = dq1.popleft()
         msg = UDSMessage(udsid, sid, data, depth, bus)
         save_log(msg_idx, udsid, sid, data)
         msg_idx += 1
 
+        check_start = time.time()
         fail_detection = msg.CheckUDSMessage()
+        check_time = time.time() - check_start
+        
+        mutate_start = time.time()
         mutated_data_list = mutator(data)
+        mutate_time = time.time() - mutate_start
+        
+        dq1_total = time.time() - dq1_start
+        print(f"Cycle {cycle_count} - DQ1 ({hex(udsid)}): Total={dq1_total:.3f}s, Check={check_time:.3f}s, Mutate={mutate_time:.3f}s")
 
         if fail_detection:
             print(f"Fail Detected! {msg_idx}: [{hex(udsid)}][{hex(sid)}] [Depth: {depth}] [{data}]")
@@ -106,14 +119,27 @@ def main():
                 for mutated_data in mutated_data_list:
                     dq1.append((udsid, sid, mutated_data, depth + 1))
 
+        # Gap between DQ1 and DQ2
+        gap_start = time.time()
+        
         # process second queue
+        dq2_start = time.time()
         udsid, sid, data, depth = dq2.popleft()
         msg = UDSMessage(udsid, sid, data, depth, bus)
         save_log(msg_idx, udsid, sid, data)
         msg_idx += 1
 
+        check_start = time.time()
         fail_detection = msg.CheckUDSMessage()
+        check_time = time.time() - check_start
+        
+        mutate_start = time.time()
         mutated_data_list = mutator(data)
+        mutate_time = time.time() - mutate_start
+        
+        dq2_total = time.time() - dq2_start
+        gap_time = dq2_start - gap_start
+        print(f"Cycle {cycle_count} - DQ2 ({hex(udsid)}): Total={dq2_total:.3f}s, Check={check_time:.3f}s, Mutate={mutate_time:.3f}s, Gap={gap_time:.3f}s")
 
         if fail_detection:
             print(f"Fail Detected! {msg_idx}: [{hex(udsid)}][{hex(sid)}] [Depth: {depth}] [{data}]")
@@ -124,6 +150,10 @@ def main():
             if depth < MAX_DEPTH:
                 for mutated_data in mutated_data_list:
                     dq2.append((udsid, sid, mutated_data, depth + 1))
+        
+        cycle_total = time.time() - cycle_start
+        print(f"Cycle {cycle_count} - Total cycle time: {cycle_total:.3f}s")
+        print("=" * 60)
 
 
     if dq1:
