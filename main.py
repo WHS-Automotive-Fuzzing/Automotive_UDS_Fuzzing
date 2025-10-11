@@ -88,6 +88,7 @@ def main():
 
     while dq1 and dq2: # when both queues are not empty
         # Process first queue
+        s_time = time.time()
         udsid, sid, data, depth = dq1.popleft()
         msg = UDSMessage(udsid, sid, data, depth, bus)
         save_log(msg_idx, udsid, sid, data)
@@ -105,8 +106,10 @@ def main():
             if depth < MAX_DEPTH:
                 for mutated_data in mutated_data_list:
                     dq1.append((udsid, sid, mutated_data, depth + 1))
+        print(f"first queue: {time.time()-s_time}")
 
         # process second queue
+        s_time = time.time()
         udsid, sid, data, depth = dq2.popleft()
         msg = UDSMessage(udsid, sid, data, depth, bus)
         save_log(msg_idx, udsid, sid, data)
@@ -124,7 +127,7 @@ def main():
             if depth < MAX_DEPTH:
                 for mutated_data in mutated_data_list:
                     dq2.append((udsid, sid, mutated_data, depth + 1))
-
+        print(f"second queue: {time.time()-s_time}")
 
     if dq1:
         while dq1:
