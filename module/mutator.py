@@ -49,7 +49,7 @@ def bitflip4(data):
     for i in range(how_many_flips):
         idx = random.randrange(total_bits)
 
-        for j in range(2):
+        for j in range(4):
         
             idx = (idx + j) % total_bits
             byte_index = idx // 8
@@ -199,7 +199,7 @@ def deletebytes(data):
 
     idx = random.randint(0, len(data) - how_many_bytes)  # 踰붿쐞 蹂댁옣
 
-    del data[idx:idx + how_many_bytes-1] 
+    del data[idx:idx + how_many_bytes] 
     return data 
 
         
@@ -217,7 +217,83 @@ def insertbytes(data):
     
     return data
 
-def call_muatate(cnt, data):
+
+
+def replace_zeros1(data):
+    if not data:
+        return data # Return unchanged if data is empty
+    
+    idx = random.randrange(len(data))
+    data[idx] = 0x00
+    
+    return data
+
+
+
+def replace_zeros2(data):
+    if len(data) < 2:
+        for i in range(len(data)):
+            data[i] = 0x00
+        return data  # If data has less than 2 bytes, return zeros of the same length    
+        
+    idx = random.randrange(len(data)-1)
+    data[idx:idx+2] = 0x00, 0x00
+    
+    return data
+
+
+
+def replace_zeros4(data):
+    if len(data) < 4:
+        for i in range(len(data)):
+            data[i] = 0x00
+        return data  # If data has less than 4 bytes, return zeros of the same length
+
+    idx = random.randrange(len(data)-3)
+    data[idx:idx+4] = 0x00, 0x00, 0x00, 0x00
+ 
+    return data
+
+
+
+def replace_ffs1(data):
+    if len(data) < 1:
+        return data  # Return unchanged if data is empty
+
+    idx = random.randrange(len(data))
+    data[idx] = 0xFF
+    
+    return data
+
+
+
+def replace_ffs2(data):
+    if len(data) < 2:
+        for i in range(len(data)):
+            data[i] = 0xFF
+        return data  # If data has less than 2 bytes, return 0xFF of the same length
+    
+    idx = random.randrange(len(data)-1)
+    data[idx:idx+2] = 0xFF, 0xFF
+    
+    return data
+
+
+
+def replace_ffs4(data):
+    if len(data) < 4:
+        for i in range(len(data)):
+            data[i] = 0xFF
+        return data  # If data has less than 4 bytes, return 0xFF of the same length
+    
+    idx = random.randrange(len(data)-3)
+    data[idx:idx+4] = 0xFF, 0xFF, 0xFF, 0xFF
+    
+    return data
+
+
+
+def call_deterministic_muatate(cnt, data):
     match cnt:
         case 0: return bitflip1(data)
         case 1: return bitflip2(data)
@@ -231,23 +307,64 @@ def call_muatate(cnt, data):
         case 9: return arithmetic_dec8(data)
         case 10: return arithmetic_dec16(data)
         case 11: return arithmetic_dec32(data)
-        case 12: return randombytes(data)
-        case 13: return deletebytes(data)
-        case 14: return insertbytes(data)
+        case 12: return replace_zeros1(data)
+        case 13: return replace_zeros2(data)
+        case 14: return replace_zeros4(data)
+        case 15: return replace_ffs1(data)
+        case 16: return replace_ffs2(data)
+        case 17: return replace_ffs4(data)
+        
+        
+        
+def call_nondeterministic_mutate(cnt, data):
+    match cnt:
+        case 0: return bitflip1(data)
+        case 1: return bitflip2(data)
+        case 2: return bitflip4(data)
+        case 3: return byteflip8(data)
+        case 4: return byteflip16(data)
+        case 5: return byteflip32(data)
+        case 6: return arithmetic_inc8(data)
+        case 7: return arithmetic_inc16(data)
+        case 8: return arithmetic_inc32(data)
+        case 9: return arithmetic_dec8(data)
+        case 10: return arithmetic_dec16(data)
+        case 11: return arithmetic_dec32(data)
+        case 12: return replace_zeros1(data)
+        case 13: return replace_zeros2(data)
+        case 14: return replace_zeros4(data)
+        case 15: return replace_ffs1(data)
+        case 16: return replace_ffs2(data)
+        case 17: return replace_ffs4(data)
+        case 18: return randombytes(data)
+        case 19: return deletebytes(data)
+        case 20: return insertbytes(data)
 
         
         
-def mutator(data):
+def deterministic_mutator(data):
     new_data_list = []
-    mutate_n = random.randint(1, MAX_MUATATION_TIME)
-    for i in range(mutate_n):
-        target_logic = random.randint(1, 0b1000000000000000)
+
+    for i in range(18):
+        new_data=data.copy()
+        new_data = call_deterministic_muatate(i, new_data)
+        new_data_list.append(new_data)
+
+    return new_data_list
+
+
+
+def nondeterministic_mutator(data):
+    new_data_list = []
+
+    for i in range(MAX_MUATATION_TIME):
+        target_logic = random.randint(1, 0b1000000000000000000000)
         new_data=data.copy()
         cnt=0
 
         while target_logic>>cnt:            
             if (target_logic>>cnt) & 0b1:
-                new_data = call_muatate(cnt, new_data)
+                new_data = call_nondeterministic_mutate(cnt, new_data)
             cnt += 1
         new_data_list.append(new_data)
 

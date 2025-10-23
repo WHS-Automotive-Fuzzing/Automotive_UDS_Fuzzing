@@ -67,6 +67,42 @@ def save_and_exit(signum, frame):
     flush_buffer()
     sys.exit(0)
 
+def fail(data, udsid, sid, depth, dq, msg_idx):
+    print(f"Fail Detected! {msg_idx}: [{hex(udsid)}][{hex(sid)}] [Depth: {depth}] [{data}]")
+    save_result(msg_idx, udsid, sid, data)
+    mutated_data_list = deterministic_mutator(data)
+    for mutated_data in mutated_data_list:
+        dq.appendleft((udsid, sid, mutated_data, 0))
+
+def deterministic_checker(data, bus, udsid, sid, depth, dq):
+    mutated_data_list = deterministic_mutator(data)
+    fail_checker = False
+    for mutated_data in mutated_data_list:
+        msg = UDSMessage(udsid, sid, mutated_data, depth, bus)
+        save_log(msg_idx, udsid, sid, mutated_data)
+        msg_idx += 1
+
+        if msg.CheckUDSMessage():
+            fail(mutated_data, udsid, sid, depth, dq)
+            fail_checker = True
+    return fail_checker
+
+def test_deque(dq, bus):
+    udsid, sid, data, depth = dq.popleft()
+    msg = UDSMessage(udsid, sid, data, depth, bus)
+    save_log(msg_idx, udsid, sid, data)
+    msg_idx += 1
+
+    fail_detection = msg.CheckUDSMessage()
+
+    if fail_detection:
+        fail(data, udsid, sid, depth, dq, msg_idx)
+    else:
+        if depth < MAX_DEPTH:
+            if not deterministic_checker(data, bus, udsid, sid, depth, dq):
+                for mutated_data in nondeterministic_mutator(data):
+                    dq.append((udsid, sid, mutated_data, depth+1))
+
 def main():
     msg_idx = 0
     seed_csv_path1 = "seed1.csv"
@@ -88,86 +124,18 @@ def main():
 
     while dq1 and dq2: # when both queues are not empty
         # Process first queue
-        s_time = time.time()
-        udsid, sid, data, depth = dq1.popleft()
-        msg = UDSMessage(udsid, sid, data, depth, bus)
-        save_log(msg_idx, udsid, sid, data)
-        msg_idx += 1
-
-        fail_detection = msg.CheckUDSMessage()
-        mutated_data_list = mutator(data)
-
-        if fail_detection:
-            print(f"Fail Detected! {msg_idx}: [{hex(udsid)}][{hex(sid)}] [Depth: {depth}] [{data}]")
-            save_result(msg_idx, udsid, sid, data)
-            for mutated_data in mutated_data_list:
-                dq1.appendleft((udsid, sid, mutated_data, 0))
-        else:
-            if depth < MAX_DEPTH:
-                for mutated_data in mutated_data_list:
-                    dq1.append((udsid, sid, mutated_data, depth + 1))
-        print(f"first queue: {time.time()-s_time}")
+        test_deque(dq1, bus)
 
         # process second queue
-        s_time = time.time()
-        udsid, sid, data, depth = dq2.popleft()
-        msg = UDSMessage(udsid, sid, data, depth, bus)
-        save_log(msg_idx, udsid, sid, data)
-        msg_idx += 1
-
-        fail_detection = msg.CheckUDSMessage()
-        mutated_data_list = mutator(data)
-
-        if fail_detection:
-            print(f"Fail Detected! {msg_idx}: [{hex(udsid)}][{hex(sid)}] [Depth: {depth}] [{data}]")
-            save_result(msg_idx, udsid, sid, data)
-            for mutated_data in mutated_data_list:
-                dq2.appendleft((udsid, sid, mutated_data, 0))
-        else:
-            if depth < MAX_DEPTH:
-                for mutated_data in mutated_data_list:
-                    dq2.append((udsid, sid, mutated_data, depth + 1))
-        print(f"second queue: {time.time()-s_time}")
+        test_deque(dq2, bus)
 
     if dq1:
         while dq1:
-            udsid, sid, data, depth = dq1.popleft()
-            msg = UDSMessage(udsid, sid, data, depth, bus)
-            save_log(msg_idx, udsid, sid, data)
-            msg_idx += 1
-
-            fail_detection = msg.CheckUDSMessage()
-            mutated_data_list = mutator(data)
-
-            if fail_detection:
-                print(f"Fail Detected! {msg_idx}: [{hex(udsid)}][{hex(sid)}] [Depth: {depth}] [{data}]")
-                save_result(msg_idx, udsid, sid, data)
-                for mutated_data in mutated_data_list:
-                    dq1.appendleft((udsid, sid, mutated_data, 0))
-            else:
-                if depth < MAX_DEPTH:
-                    for mutated_data in mutated_data_list:
-                        dq1.append((udsid, sid, mutated_data, depth + 1))
+            test_deque(dq1, bus)
     
     else :
         while dq2:
-            udsid, sid, data, depth = dq2.popleft()
-            msg = UDSMessage(udsid, sid, data, depth, bus)
-            save_log(msg_idx, udsid, sid, data)
-            msg_idx += 1
-
-            fail_detection = msg.CheckUDSMessage()
-            mutated_data_list = mutator(data)
-
-            if fail_detection:
-                print(f"Fail Detected! {msg_idx}: [{hex(udsid)}][{hex(sid)}] [Depth: {depth}] [{data}]")
-                save_result(msg_idx, udsid, sid, data)
-                for mutated_data in mutated_data_list:
-                    dq2.appendleft((udsid, sid, mutated_data, 0))
-            else:
-                if depth < MAX_DEPTH:
-                    for mutated_data in mutated_data_list:
-                        dq2.append((udsid, sid, mutated_data, depth + 1))
+            test_deque(dq2, bus)
 
     flush_buffer()
 
