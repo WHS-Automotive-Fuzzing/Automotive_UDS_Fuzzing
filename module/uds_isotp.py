@@ -1,3 +1,4 @@
+import cmd
 import isotp
 import can
 import time
@@ -59,32 +60,17 @@ class UDSMessage:
             self.ECUReset(stack)
             return self.failed
 
-        self.ECUReset(stack)
+        #self.ECUReset(stack)
         return self.failed
 
     def StartDiagnosticMode(self, stack):
-        retry = 0
-        while retry < 3:
-            stack.send(bytes([0x3E, 0x00]))
-            stack.send(bytes([0x3E, 0x00]))
-            if self.wait_response(stack, [0x7E, 0x00]):
-                break
-            retry += 1
-
-        if retry == 3:
-            print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 3E 00")
-            self.diagnosticmodefail = True
-            return
-
-        retry = 0
-        while retry < 3:
-            stack.send(bytes([0x10, 0x03]))
-            if self.wait_response(stack, [0x50, 0x03]):
-                break
-            retry += 1
-
-        if retry == 3:
-            print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 10 03")
+        for cmd in ([0x3E,0x00], [0x10,0x03]):
+            for retry in range(3):
+                stack.send(bytes(cmd))
+                if self.wait_response(stack, [cmd[0]+0x30, cmd[1]]):  # 예: 10→50
+                    break
+        else:
+            print(f"{cmd} no response")
             self.diagnosticmodefail = True
             return
 
@@ -121,8 +107,24 @@ class UDSMessage:
                     return True
             #time.sleep(0.01)
         return False
-
+    
+    
     def ECUReset(self, stack):
+        global prev_udsid
+        
+        s_time = time.time()
+        
+        # 단 한 번만 0x11 0x02 (ECU Reset - Hard Reset) 메시지 전송
+        stack.send(bytes([0x11, 0x02]))
+        
+       
+        if not self.wait_response(stack, [0x51, 0x02]):
+            print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 11 02")
+        
+        prev_udsid = self.udsid
+        print(f"ECU Reset: {time.time()-s_time}")
+        
+    '''def ECUReset(self, stack):
         global prev_udsid
         retry = 0
         s_time = time.time()
@@ -137,7 +139,7 @@ class UDSMessage:
         prev_udsid = self.udsid
         if retry == 3:
             print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 11 02")
-        print(f"ECU Reset: {time.time()-s_time}")
+        print(f"ECU Reset: {time.time()-s_time}")'''
 
     def Debug_fail(self):
         addr = isotp.Address(isotp.AddressingMode.Normal_11bits, txid=self.udsid, rxid=Response_ID[self.udsid])
