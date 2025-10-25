@@ -3,7 +3,8 @@ import isotp
 import can
 import time
 
-WAIT_RESPONSE_TIME = 0.1  # seconds
+WAIT_RESPONSE_TIME = 0.2  # seconds
+RESET_WAIT_RESPONSE_TIME = 2
 RESET_SLEEP_TIME_DIFF_ID = 0.01
 RESET_SLEEP_TIME_SAME_ID = 0.05
 prev_udsid = 0x0000
@@ -30,47 +31,63 @@ class UDSMessage:
         self.diagnosticmodefail = False
         self.error_detected = False
         self.failed = False
+        self.NRC = None
 
     def error_handler(self, e):
         if isinstance(e, isotp.errors.FlowControlTimeoutError):
-            print(f"[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] Flow Control Error: ", e)
+            #print(f"[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] Flow Control Error: ", e)
             self.error_detected = True
-        else:
-            print(f"[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] Error: ", e)
+        #else:
+            #print(f"[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] Error: ", e)
 
     def CheckUDSMessage(self):
         addr = isotp.Address(isotp.AddressingMode.Normal_11bits, txid=self.udsid, rxid=Response_ID[self.udsid])
         params = {"tx_padding": 0xFF}
         stack = isotp.CanStack(bus=self.bus, address=addr, params=params, error_handler=self.error_handler)
 
-        print(f"[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] Sending UDS Message: {self.data}")
+        #print(f"[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] Sending UDS Message: {self.data}")
 
         s_time = time.time()
         self.StartDiagnosticMode(stack)
-        print(f"Diagnostic Mode: {time.time()-s_time}")
+        #print(f"Diagnostic Mode: {time.time()-s_time}")
         if self.diagnosticmodefail or self.error_detected:
             self.ECUReset(stack)  # ← 반드시 Reset
             return self.failed
 
         s_time = time.time()
         self.FailDetection(stack)
-        print(f"Fail detection: {time.time()-s_time}")
+        #print(f"Fail detection: {time.time()-s_time}")
 
         if self.error_detected:
             self.ECUReset(stack)
             return self.failed
 
-        #self.ECUReset(stack)
+        self.ECUReset(stack)
         return self.failed
 
     def StartDiagnosticMode(self, stack):
-        for cmd in ([0x3E,0x00], [0x10,0x03]):
-            for retry in range(3):
-                stack.send(bytes(cmd))
-                if self.wait_response(stack, [cmd[0]+0x30, cmd[1]]):  # 예: 10→50
-                    break
-        else:
-            print(f"{cmd} no response")
+        retry = 0
+        while retry < 3:
+            stack.send(bytes([0x3E, 0x00]))
+            stack.send(bytes([0x3E, 0x00]))
+            if self.wait_response(stack, [0x7E, 0x00]):
+                break
+            retry += 1
+
+        if retry == 3:
+            #print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 3E 00")
+            self.diagnosticmodefail = True
+            return
+
+        retry = 0
+        while retry < 3:
+            stack.send(bytes([0x10, 0x03]))
+            if self.wait_response(stack, [0x50, 0x03]):
+                break
+            retry += 1
+
+        if retry == 3:
+            #print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 10 03")
             self.diagnosticmodefail = True
             return
 
@@ -82,7 +99,7 @@ class UDSMessage:
         while time.time() - s_time < WAIT_RESPONSE_TIME:
             stack.process()
             if stack.available():
-                response = stack.recv()
+                response = stack.recv(timeout=5)
                 if response[0] == 0x7F and response[2] == 0x78:
                     return
                 #print(f"[{hex(self.udsid)}][{hex(self.sid)}] Response: {response.hex()}")  # Debugging output
@@ -96,19 +113,34 @@ class UDSMessage:
         stack.send(bytes([0x10, 0x01]))
         if not self.wait_response(stack, [0x50, 0x01]):
             self.failed = True
+            self.NRC = response[2] 
+            print(f"Fail Detected! \n[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] [{self.data}] NRC: {response[2]}")
 
     def wait_response(self, stack, expected_data, timeout=WAIT_RESPONSE_TIME):
         start_time = time.time()
         while time.time() - start_time < timeout:
+            
             stack.process()
             if stack.available():
-                response = stack.recv()
+                response = stack.recv(timeout=5)
                 if response[:len(expected_data)] == bytes(expected_data):
                     return True
             #time.sleep(0.01)
         return False
     
-    
+    def reset_wait_response(self, stack, expected_data, timeout=RESET_WAIT_RESPONSE_TIME):
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            stack.process()
+            if stack.available():
+                response = stack.recv(timeout=5)
+                if len(response)>3 and response[2] == 0x78:
+                    response = stack.recv(timeout=5)
+                if response[:len(expected_data)] == bytes(expected_data):
+                    return True
+            #time.sleep(0.01)
+        return False
+        
     def ECUReset(self, stack):
         global prev_udsid
         
@@ -118,11 +150,11 @@ class UDSMessage:
         stack.send(bytes([0x11, 0x02]))
         
        
-        if not self.wait_response(stack, [0x51, 0x02]):
-            print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 11 02")
+        #if not self.reset_wait_response(stack, [0x51, 0x02]):
+            #print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 11 02")
         
         prev_udsid = self.udsid
-        print(f"ECU Reset: {time.time()-s_time}")
+        #print(f"ECU Reset: {time.time()-s_time}")
         
     '''def ECUReset(self, stack):
         global prev_udsid
@@ -160,7 +192,8 @@ class UDSMessage:
         while time.time() - s_time < WAIT_RESPONSE_TIME:
             stack.process()
             if stack.available():
-                response = stack.recv()
+                response = stack.recv(timeout=5)
+                
                 print(f"[{hex(self.udsid)}][{hex(self.sid)}] Response: {response.hex()}")  # Debugging output
                 break
             #time.sleep(0.01)
@@ -171,7 +204,7 @@ class UDSMessage:
         # Valid request check
         stack.send(bytes([0x10, 0x03]))
         if not self.wait_response(stack, [0x50, 0x03]):
-            print(f"[{hex(self.udsid)}][{hex(self.sid)}] no response 10 03")
+            #print(f"[{hex(self.udsid)}][{hex(self.sid)}] no response 10 03")
             self.failed = True
 
         if self.error_detected:

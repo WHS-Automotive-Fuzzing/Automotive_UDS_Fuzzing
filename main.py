@@ -13,6 +13,7 @@ send_log_path = "send_log.csv"
 MAX_DEPTH = 10
 buffer = []
 send_buffer = []
+msg_idx=0
 
 def read_uds_records_from_csv(path: str):
     records = []
@@ -29,9 +30,9 @@ def read_uds_records_from_csv(path: str):
             records.append((udsid, sid, data, depth))
     return records
 
-def save_result(msg_idx,udsid, sid, data):
+def save_result(msg_idx,udsid, sid, data, msg):
     global buffer
-    hex_row = [f"{msg_idx}", f"{udsid:03X}", f"{sid:02X}"] + [f"{byte:02X}" for byte in data]
+    hex_row = [f"{msg_idx}", f"{self.NRC:02X}",f"{udsid:03X}", f"{sid:02X}"] + [f"{byte:02X}" for byte in data]
     buffer.append(hex_row)
     if len(buffer) >= 10:
         with open(result_csv_path, "a", newline='') as f:
@@ -40,7 +41,7 @@ def save_result(msg_idx,udsid, sid, data):
         buffer.clear()
 
 def save_log(msg_idx, udsid, sid, data):
-    global send_buffer
+    global send_buffer  
     hex_row = [f"{msg_idx}", f"{udsid:03X}", f"{sid:02X}"] + [f"{byte:02X}" for byte in data]
     send_buffer.append(hex_row)
     if len(send_buffer) >= 10:
@@ -75,6 +76,7 @@ def fail(data, udsid, sid, depth, dq, msg_idx):
         dq.appendleft((udsid, sid, mutated_data, 0))
 
 def deterministic_checker(data, bus, udsid, sid, depth, dq):
+    global msg_idx
     mutated_data_list = deterministic_mutator(data)
     fail_checker = False
     for mutated_data in mutated_data_list:
@@ -88,9 +90,10 @@ def deterministic_checker(data, bus, udsid, sid, depth, dq):
     return fail_checker
 
 def test_deque(dq, bus):
+    global msg_idx
     udsid, sid, data, depth = dq.popleft()
     msg = UDSMessage(udsid, sid, data, depth, bus)
-    save_log(msg_idx, udsid, sid, data)
+    save_log(msg_idx,udsid, sid, data)
     msg_idx += 1
 
     fail_detection = msg.CheckUDSMessage()
@@ -104,14 +107,13 @@ def test_deque(dq, bus):
                     dq.append((udsid, sid, mutated_data, depth+1))
 
 def main():
-    msg_idx = 0
     seed_csv_path1 = "seed1.csv"
     seed_csv_path2 = "seed2.csv"
     signal.signal(signal.SIGINT, save_and_exit)
 
     with open(result_csv_path, "w", newline='') as f: # result csv
         writer = csv.writer(f)
-        writer.writerow(['idx','udsid', 'sid', 'data'])
+        writer.writerow(['idx','NRC','udsid', 'sid', 'data'])
     
     with open(send_log_path, "w", newline='') as f: # send log csv
         writer = csv.writer(f)
