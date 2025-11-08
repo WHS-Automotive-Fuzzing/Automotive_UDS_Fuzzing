@@ -77,10 +77,10 @@ def fail(data, udsid, sid, depth, dq, msg_idx):
 
 def deterministic_checker(data, bus, udsid, sid, depth, dq):
     global msg_idx
-    msg = UDSMessage(udsid, sid, mutated_data, depth, bus)
     mutated_data_list = deterministic_mutator(msg)
     fail_checker = False
     for mutated_data in mutated_data_list:
+        msg = UDSMessage(udsid, sid, mutated_data, depth, bus)
         save_log(msg_idx, udsid, sid, mutated_data)
         msg_idx += 1
 
