@@ -9,18 +9,13 @@ MAX_MUATATION_TIME = 2
 
 def bitflip1(data):
     #flip 1 random bit in data
-    #print("bitflip1")
     total_bits = len(data) * 8
-    
-    #print(data)
-    how_many_flips = random.randint(1, MAX_MUTATION_PER_LOGIC)
-    for i in range(how_many_flips):
 
-        idx = random.randrange(total_bits)
-        byte_index = idx // 8
-        bit_index = idx % 8
-        data[byte_index] ^= (1 << bit_index)
-    #print(data)
+    idx = random.randrange(total_bits)
+    byte_index = idx // 8
+    bit_index = idx % 8
+    data[byte_index] ^= (1 << bit_index)
+
     return data
 
 def bitflip2(data): 
@@ -28,157 +23,112 @@ def bitflip2(data):
     #flip  2 random consecutive bits in data
     total_bits = len(data) * 8
 
-    how_many_flips = random.randint(1, MAX_MUTATION_PER_LOGIC)
-    for i in range(how_many_flips):
-        idx = random.randrange(total_bits)
+    idx = random.randrange(total_bits)
 
-        for j in range(2):
-        
-            idx = (idx + j) % total_bits
-            byte_index = idx // 8
-            bit_index = idx % 8
-            data[byte_index] ^= (1 << bit_index)
-
+    for j in range(2):
+        idx = (idx + j) % total_bits
+        byte_index = idx // 8
+        bit_index = idx % 8
+        data[byte_index] ^= (1 << bit_index)
     return data
 
 def bitflip4(data):
     #flip 4 random consecutive bits in data
     total_bits = len(data) * 8
 
-    how_many_flips = random.randint(1, MAX_MUTATION_PER_LOGIC)
-    for i in range(how_many_flips):
-        idx = random.randrange(total_bits)
-
-        for j in range(4):
-        
-            idx = (idx + j) % total_bits
-            byte_index = idx // 8
-            bit_index = idx % 8
-            data[byte_index] ^= (1 << bit_index)
-
+    idx = random.randrange(total_bits)
+    for j in range(4):   
+        idx = (idx + j) % total_bits
+        byte_index = idx // 8
+        bit_index = idx % 8
+        data[byte_index] ^= (1 << bit_index)
     return data
 
 
 def byteflip8(data):
     #flip 1 byte in data
-    how_many_flips = random.randint(1, MAX_MUTATION_PER_LOGIC)
-
-    for i in range(how_many_flips):
-        idx = random.randrange(len(data))
-        data[idx] ^= 0xFF
-    
+    idx = random.randrange(len(data))
+    data[idx] ^= 0xFF   
     return data
 
 
 
 def byteflip16(data):
     #flip 2 random consecutive bytes in data
-    how_many_flips = random.randint(1, MAX_MUTATION_PER_LOGIC)
+    idx = random.randrange(len(data))
+    for j in range(2):
+        idx = (idx + j) % len(data)
+        data[idx] ^= 0xFF
 
-    for i in range(how_many_flips):
-        idx = random.randrange(len(data))
-
-        for j in range(2):
-            idx = (idx + j) % len(data)
-            data[idx] ^= 0xFF
-        
-    
     return data
 
 
 def byteflip32(data):
     #flip 4 random consecutive bytes in data
-    how_many_flips = random.randint(1, MAX_MUTATION_PER_LOGIC)
-
-    for i in range(how_many_flips):
-        idx = random.randrange(len(data))
-
-        for j in range(4):
-            idx = (idx + j) % len(data)
-            data[idx] ^= 0xFF
-        
+    idx = random.randrange(len(data))
+    for j in range(4):
+        idx = (idx + j) % len(data)
+        data[idx] ^= 0xFF
     
     return data
 
 
 def arithmetic_inc8(data):
     #arithmetic increment 1 random byte in data
-    how_many_flips = random.randint(1, MAX_MUTATION_PER_LOGIC)
-
-    for i in range(how_many_flips):
-        idx = random.randrange(len(data))
-        data[idx] = (data[idx] + 1) % 256
+    idx = random.randrange(len(data))
+    data[idx] = (data[idx] + 1) % 256
 
     return data
 
 def arithmetic_inc16(data):
     #arithmetic increment 2 random consecutive bytes in data
-    how_many_flips = random.randint(1, MAX_MUTATION_PER_LOGIC)
-
-    for i in range(how_many_flips):
-        idx = random.randrange(len(data))
-
-        for j in range(2):
-            idx = (idx + j) % len(data)
-            data[idx] = (data[idx] + 1) % 256
+    idx = random.randrange(len(data))
+    for j in range(2):
+        idx = (idx + j) % len(data)
+        data[idx] = (data[idx] + 1) % 256
 
     return data
     
 def arithmetic_inc32(data): 
     #arithmetic increment 4 random consecutive bytes in data
-    how_many_flips = random.randint(1, MAX_MUTATION_PER_LOGIC)
-
-    for i in range(how_many_flips):
-        idx = random.randrange(len(data))
-
-        for j in range(4):
-            idx = (idx + j) % len(data)
-            data[idx] = (data[idx] + 1) % 256
+    idx = random.randrange(len(data))
+    for j in range(4):
+        idx = (idx + j) % len(data)
+        data[idx] = (data[idx] + 1) % 256
 
     return data
 
 def arithmetic_dec8(data):
     #arithmetic decrement 1 random byte in data
-    how_many_flips = random.randint(1, MAX_MUTATION_PER_LOGIC)
-
-    for i in range(how_many_flips):
-        idx = random.randrange(len(data))
-        if data[idx] == 0:
-            data[idx] = 255
-        else:
-            data[idx] = (data[idx] - 1)
+    idx = random.randrange(len(data))
+    if data[idx] == 0:
+        data[idx] = 255
+    else:
+        data[idx] = (data[idx] - 1)
 
     return data
     
 def arithmetic_dec16(data):
     #arithmetic decrement 2 random consecutive bytes in data
-    how_many_flips = random.randint(1, MAX_MUTATION_PER_LOGIC)
-
-    for i in range(how_many_flips):
-        idx = random.randrange(len(data))
-
-        for j in range(2):
-            idx = (idx + j) % len(data)
-            if data[idx] == 0:
-                data[idx] = 255
-            else:
-                data[idx] = (data[idx] - 1)
+    idx = random.randrange(len(data))
+    for j in range(2):
+        idx = (idx + j) % len(data)
+        if data[idx] == 0:
+            data[idx] = 255
+        else:
+            data[idx] = (data[idx] - 1)
     return data
 
         
 def arithmetic_dec32(data):
     #arithmetic decrement 4 random consecutive bytes in data
-    how_many_flips = random.randint(1, MAX_MUTATION_PER_LOGIC)
-
-    for i in range(how_many_flips):
-        idx = random.randrange(len(data))
-
-        for j in range(4):
-            idx = (idx + j) % len(data)
-            if data[idx] == 0:
-                data[idx] = 255
-            else:
-                data[idx] = (data[idx] - 1)
+    idx = random.randrange(len(data))
+    for j in range(4):
+        idx = (idx + j) % len(data)
+        if data[idx] == 0:
+            data[idx] = 255
+        else:
+            data[idx] = (data[idx] - 1)
     
     return data
     
@@ -194,13 +144,17 @@ def randombytes(data):
 
 def deletebytes(data):
     # delete random consecutive bytes in data
+    n = len(data)
+    if n <= 1:
+        return data  # 0방지
+
     random_bytes = random.randint(1, MAX_MUTATION_PER_LOGIC)
-    how_many_bytes = min(random_bytes, len(data))
+    how_many_bytes = min(random_bytes, n - 1)
 
-    idx = random.randint(0, len(data) - how_many_bytes)  # 踰붿쐞 蹂댁옣
-
-    del data[idx:idx + how_many_bytes] 
-    return data 
+    idx = random.randint(0, n - how_many_bytes)
+    del data[idx:idx + how_many_bytes]
+    return data
+ 
 
         
 
@@ -342,11 +296,11 @@ def call_nondeterministic_mutate(cnt, data):
 
         
         
-def deterministic_mutator(data):
+def deterministic_mutator(msg):
     new_data_list = []
 
     for i in range(18):
-        new_data=data.copy()
+        new_data=msg.data.copy()
         new_data = call_deterministic_muatate(i, new_data)
         new_data_list.append(new_data)
 
@@ -354,12 +308,12 @@ def deterministic_mutator(data):
 
 
 
-def nondeterministic_mutator(data):
+def nondeterministic_mutator(msg):
     new_data_list = []
 
     for i in range(MAX_MUATATION_TIME):
         target_logic = random.randint(1, 0b1000000000000000000000)
-        new_data=data.copy()
+        new_data=msg.data.copy()
         cnt=0
 
         while target_logic>>cnt:            
