@@ -113,13 +113,13 @@ class UDSMessage:
         stack.send(bytes([0x10, 0x01]))
         if not self.wait_response(stack, [0x50, 0x01]):
             self.failed = True
-            self.NRC = response[2] 
+            self.NRC = response[2]
             print(f"Fail Detected! \n[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] [{self.data}] NRC: {response[2]}")
 
     def wait_response(self, stack, expected_data, timeout=WAIT_RESPONSE_TIME):
         start_time = time.time()
         while time.time() - start_time < timeout:
-            
+
             stack.process()
             if stack.available():
                 response = stack.recv(timeout=5)
@@ -127,7 +127,7 @@ class UDSMessage:
                     return True
             #time.sleep(0.01)
         return False
-    
+
     def reset_wait_response(self, stack, expected_data, timeout=RESET_WAIT_RESPONSE_TIME):
         start_time = time.time()
         while time.time() - start_time < timeout:
@@ -140,22 +140,22 @@ class UDSMessage:
                     return True
             #time.sleep(0.01)
         return False
-        
+
     def ECUReset(self, stack):
         global prev_udsid
-        
+
         s_time = time.time()
-        
+
         # 단 한 번만 0x11 0x02 (ECU Reset - Hard Reset) 메시지 전송
         stack.send(bytes([0x11, 0x02]))
-        
-       
+
+
         #if not self.reset_wait_response(stack, [0x51, 0x02]):
             #print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 11 02")
-        
+
         prev_udsid = self.udsid
         #print(f"ECU Reset: {time.time()-s_time}")
-        
+
     '''def ECUReset(self, stack):
         global prev_udsid
         retry = 0
@@ -193,7 +193,7 @@ class UDSMessage:
             stack.process()
             if stack.available():
                 response = stack.recv(timeout=5)
-                
+
                 print(f"[{hex(self.udsid)}][{hex(self.sid)}] Response: {response.hex()}")  # Debugging output
                 break
             #time.sleep(0.01)
@@ -212,5 +212,65 @@ class UDSMessage:
             return self.failed
 
         self.ECUReset(stack)
-        
 
+
+class NegativeResponseCodes(object):
+    """
+    ISO-14229-1 negative response codes
+    """
+    POSITIVE_RESPONSE = 0x00
+    # 0x01-0x0F ISO SAE Reserved
+    GENERAL_REJECT = 0x10
+    SERVICE_NOT_SUPPORTED = 0x11
+    SUB_FUNCTION_NOT_SUPPORTED = 0x12
+    INCORRECT_MESSAGE_LENGTH_OR_INVALID_FORMAT = 0x13
+    RESPONSE_TOO_LONG = 0x14
+    # 0x15-0x20 ISO SAE Reserved
+    BUSY_REPEAT_REQUEST = 0x21
+    CONDITIONS_NOT_CORRECT = 0x22
+    # 0x23 ISO SAE Reserved
+    REQUEST_SEQUENCE_ERROR = 0x24
+    NO_RESPONSE_FROM_SUBNET_COMPONENT = 0x25
+    FAILURE_PREVENTS_EXECUTION_OF_REQUESTED_ACTION = 0x26
+    # 0x27-0x30 ISO SAE Reserved
+    REQUEST_OUT_OF_RANGE = 0x31
+    # 0x32 ISO SAE Reserved
+    SECURITY_ACCESS_DENIED = 0x33
+    # 0x34 ISO SAE Reserved
+    INVALID_KEY = 0x35
+    EXCEEDED_NUMBER_OF_ATTEMPTS = 0x36
+    REQUIRED_TIME_DELAY_NOT_EXPIRED = 0x37
+    # 0x38-0x4F Reserved by extended data link security document
+    # 0x50-0x6F ISO SAE Reserved
+    UPLOAD_DOWNLOAD_NOT_ACCEPTED = 0x70
+    TRANSFER_DATA_SUSPENDED = 0x71
+    GENERAL_PROGRAMMING_FAILURE = 0x72
+    WRONG_BLOCK_SEQUENCE_COUNTER = 0x73
+    # 0x74-0x77 ISO SAE Reserved
+    REQUEST_CORRECTLY_RECEIVED_RESPONSE_PENDING = 0x78
+    # 0x79-0x7D ISO SAE Reserved
+    SUB_FUNCTION_NOT_SUPPORTED_IN_ACTIVE_SESSION = 0x7E
+    SERVICE_NOT_SUPPORTED_IN_ACTIVE_SESSION = 0x7F
+    # 0x80 ISO SAE Reserved
+    RPM_TOO_HIGH = 0x81
+    RPM_TOO_LOW = 0x82
+    ENGINE_IS_RUNNING = 0x83
+    ENGINE_IS_NOT_RUNNING = 0x84
+    ENGINE_RUN_TIME_TOO_LOW = 0x85
+    TEMPERATURE_TOO_HIGH = 0x86
+    TEMPERATURE_TOO_LOW = 0x87
+    VEHICLE_SPEED_TOO_HIGH = 0x88
+    VEHICLE_SPEED_TOO_LOW = 0x89
+    THROTTLE_PEDAL_TOO_HIGH = 0x8A
+    THROTTLE_PEDAL_TOO_LOW = 0x8B
+    TRANSMISSION_RANGE_NOT_IN_NEUTRAL = 0x8C
+    TRANSMISSION_RANGE_NOT_IN_GEAR = 0x8D
+    # 0x8E ISO SAE Reserved
+    BRAKE_SWITCHES_NOT_CLOSED = 0x8F
+    SHIFT_LEVER_NOT_IN_PARK = 0x90
+    TORQUE_CONVERTER_CLUTCH_LOCKED = 0x91
+    VOLTAGE_TOO_HIGH = 0x92
+    VOLTAGE_TOO_LOW = 0x93
+    # 0x94-0xEF Reserved for specific conditions not correct
+    # 0xF0-0xFE Vehicle manufacturer specific conditions not correct
+    # 0xFF ISO SAE Reserved
