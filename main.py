@@ -1,4 +1,4 @@
-import isotp
+cimport isotp
 import csv
 import can
 import time
@@ -68,14 +68,14 @@ def save_and_exit(signum, frame):
     flush_buffer()
     sys.exit(0)
 
-def fail(data, udsid, sid, depth, dq, msg_idx):
+def fail(data, udsid, sid, depth, dq, msg_idx, msg):
     print(f"Fail Detected! {msg_idx}: [{hex(udsid)}][{hex(sid)}] [Depth: {depth}] [{data}]")
     save_result(msg_idx, udsid, sid, data)
     mutated_data_list = deterministic_mutator(msg)
     for mutated_data in mutated_data_list:
         dq.appendleft((udsid, sid, mutated_data, 0))
 
-def deterministic_checker(data, bus, udsid, sid, depth, dq):
+def deterministic_checker(data, bus, udsid, sid, depth, dq, msg):
     global msg_idx
     mutated_data_list = deterministic_mutator(msg)
     fail_checker = False
@@ -85,7 +85,7 @@ def deterministic_checker(data, bus, udsid, sid, depth, dq):
         msg_idx += 1
 
         if msg.CheckUDSMessage():
-            fail(mutated_data, udsid, sid, depth, dq)
+            fail(mutated_data, udsid, sid, depth, dq, msg)
             fail_checker = True
     return fail_checker
 
@@ -99,10 +99,10 @@ def test_deque(dq, bus):
     fail_detection = msg.CheckUDSMessage()
 
     if fail_detection:
-        fail(data, udsid, sid, depth, dq, msg_idx)
+        fail(data, udsid, sid, depth, dq, msg_idx, msg)
     else:
         if depth < MAX_DEPTH:
-            if not deterministic_checker(data, bus, udsid, sid, depth, dq):
+            if not deterministic_checker(data, bus, udsid, sid, depth, dq, msg):
                 for mutated_data in nondeterministic_mutator(msg):
                     dq.append((udsid, sid, mutated_data, depth+1))
 
