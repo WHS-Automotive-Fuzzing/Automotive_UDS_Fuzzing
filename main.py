@@ -1,4 +1,4 @@
-cimport isotp
+import isotp
 import csv
 import can
 import time
