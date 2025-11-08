@@ -71,7 +71,7 @@ def save_and_exit(signum, frame):
 def fail(data, udsid, sid, depth, dq, msg_idx):
     print(f"Fail Detected! {msg_idx}: [{hex(udsid)}][{hex(sid)}] [Depth: {depth}] [{data}]")
     save_result(msg_idx, udsid, sid, data)
-    mutated_data_list = deterministic_mutator(data)
+    mutated_data_list = deterministic_mutator(msg)
     for mutated_data in mutated_data_list:
         dq.appendleft((udsid, sid, mutated_data, 0))
 
