@@ -9,7 +9,7 @@ from module.uds_isotp import *
 from module.mutator import *
 
 records = []
-with open('result.csv', newline='') as f:
+with open('test.csv', newline='') as f:
   reader = csv.reader(f)
   next(reader, None)
   for row in reader:

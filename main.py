@@ -32,7 +32,7 @@ def read_uds_records_from_csv(path: str):
 
 def save_result(msg_idx,udsid, sid, data, msg):
     global buffer
-    hex_row = [f"{msg_idx}", f"{self.NRC:02X}",f"{udsid:03X}", f"{sid:02X}"] + [f"{byte:02X}" for byte in data]
+    hex_row = [f"{msg_idx}", f"{msg.NRC:02X}",f"{udsid:03X}", f"{sid:02X}"] + [f"{byte:02X}" for byte in data]
     buffer.append(hex_row)
     if len(buffer) >= 10:
         with open(result_csv_path, "a", newline='') as f:
@@ -70,7 +70,7 @@ def save_and_exit(signum, frame):
 
 def fail(data, udsid, sid, depth, dq, msg_idx, msg):
     print(f"Fail Detected! {msg_idx}: [{hex(udsid)}][{hex(sid)}] [Depth: {depth}] [{data}]")
-    save_result(msg_idx, udsid, sid, data)
+    save_result(msg_idx, udsid, sid, data, msg)
     mutated_data_list = deterministic_mutator(msg)
     for mutated_data in mutated_data_list:
         dq.appendleft((udsid, sid, mutated_data, 0))
