@@ -46,6 +46,11 @@ def save_log(msg_idx, msg):
             writer.writerows(send_buffer)
         send_buffer.clear()
 
+def reset_marker():
+    with open(send_log_path, "a", newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['---------------Reset Done---------------'])
+
 def flush_buffer():
     global buffer
     global send_buffer

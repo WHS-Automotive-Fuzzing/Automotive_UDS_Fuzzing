@@ -2,6 +2,7 @@ import cmd
 import isotp
 import can
 import time
+from logger import * 
 
 WAIT_RESPONSE_TIME = 0.2  # seconds
 RESET_WAIT_RESPONSE_TIME = 2
@@ -170,6 +171,9 @@ class UDSMessage:
 
         if not self.reset_wait_response(stack, [0x51, 0x01]):
             print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 11 01")
+        
+        else:
+            print("Reset Done!")
 
         prev_udsid = self.udsid
         #print(f"ECU Reset: {time.time()-s_time}")
