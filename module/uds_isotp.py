@@ -27,18 +27,16 @@ class UDSMessage:
         self.data = data
         self.depth = depth
         self.bus = bus
+        self.response = None
 
         self.diagnosticmodefail = False
         self.error_detected = False
         self.failed = False
-        self.NRC = None
 
     def error_handler(self, e):
         if isinstance(e, isotp.errors.FlowControlTimeoutError):
-            #print(f"[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] Flow Control Error: ", e)
             self.error_detected = True
-        #else:
-            #print(f"[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] Error: ", e)
+
 
     def CheckUDSMessage(self):
         addr = isotp.Address(isotp.AddressingMode.Normal_11bits, txid=self.udsid, rxid=Response_ID[self.udsid])
@@ -104,7 +102,7 @@ class UDSMessage:
                 if not response:
                     self.failed = True
                     return
-                
+                self.response = response
                 if response[0] == 0x7F and response[2] == 0x78:
                     return
                 #print(f"[{hex(self.udsid)}][{hex(self.sid)}] Response: {response.hex()}")  # Debugging output
@@ -118,7 +116,7 @@ class UDSMessage:
         stack.send(bytes([0x10, 0x01]))
         if not self.wait_validcheck(stack, [0x50, 0x01]):
             self.failed = True
-            print(f"Fail Detected! \n[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] [{self.data}] NRC: {self.NRC}")
+            print(f"Fail Detected! \n[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] [{self.data}] response: {self.response}")
 
     def wait_response(self, stack, expected_data, timeout=WAIT_RESPONSE_TIME):
         start_time = time.time()
@@ -144,7 +142,7 @@ class UDSMessage:
                     return True
         
         if response:
-            self.NRC = response[2]
+            self.response = response
 
         return False
 

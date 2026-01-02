@@ -3,16 +3,12 @@ import csv
 import can
 import time
 import signal
-import sys
 from collections import deque
 from module.uds_isotp import *
 from module.mutator import *
+from module.logger import *
 
-result_csv_path = "result.csv"
-send_log_path = "send_log.csv"
 MAX_DEPTH = 10
-buffer = []
-send_buffer = []
 msg_idx=0
 
 def read_uds_records_from_csv(path: str):
@@ -30,79 +26,41 @@ def read_uds_records_from_csv(path: str):
             records.append((udsid, sid, data, depth))
     return records
 
-def save_result(msg_idx,udsid, sid, data, msg):
-    global buffer
-    hex_row = [f"{msg_idx}", f"{msg.NRC:02X}",f"{udsid:03X}", f"{sid:02X}"] + [f"{byte:02X}" for byte in data]
-    buffer.append(hex_row)
-    if len(buffer) >= 10:
-        with open(result_csv_path, "a", newline='') as f:
-            writer = csv.writer(f)
-            writer.writerows(buffer)
-        buffer.clear()
-
-def save_log(msg_idx, udsid, sid, data):
-    global send_buffer  
-    hex_row = [f"{msg_idx}", f"{udsid:03X}", f"{sid:02X}"] + [f"{byte:02X}" for byte in data]
-    send_buffer.append(hex_row)
-    if len(send_buffer) >= 10:
-        with open(send_log_path, "a", newline='') as f:
-            writer = csv.writer(f)
-            writer.writerows(send_buffer)
-        send_buffer.clear()
-
-def flush_buffer():
-    global buffer
-    global send_buffer
-    if buffer:
-        with open(result_csv_path, "a", newline='') as f:
-            writer = csv.writer(f)
-            writer.writerows(buffer)
-        buffer.clear()
-    if send_buffer:
-        with open(send_log_path, "a", newline='') as f:
-            writer = csv.writer(f)
-            writer.writerows(send_buffer)
-        send_buffer.clear()
-
-def save_and_exit(signum, frame):
-    flush_buffer()
-    sys.exit(0)
-
-def fail(data, udsid, sid, depth, dq, msg_idx, msg):
-    print(f"Fail Detected! {msg_idx}: [{hex(udsid)}][{hex(sid)}] [Depth: {depth}] [{data}]")
-    save_result(msg_idx, udsid, sid, data, msg)
+def fail(dq, msg_idx, msg):
+    print(f"Fail Detected! {msg_idx}: [{hex(msg.udsid)}][{hex(msg.sid)}] [Depth: {msg.depth}] [{msg.data}]")
+    save_result(msg_idx, msg)
     mutated_data_list = deterministic_mutator(msg)
     for mutated_data in mutated_data_list:
-        dq.appendleft((udsid, sid, mutated_data, 0))
+        dq.appendleft((msg.udsid, msg.sid, mutated_data, 0))
 
-def deterministic_checker(data, bus, udsid, sid, depth, dq, msg):
+def deterministic_checker(dq, msg):
     global msg_idx
     mutated_data_list = deterministic_mutator(msg)
     fail_checker = False
     for mutated_data in mutated_data_list:
-        msg = UDSMessage(udsid, sid, mutated_data, depth, bus)
-        save_log(msg_idx, udsid, sid, mutated_data)
-        msg_idx += 1
+        msg = UDSMessage(msg.udsid, msg.sid, mutated_data, msg.depth, msg.bus)
+        save_log(msg_idx, msg)
 
         if msg.CheckUDSMessage():
-            fail(mutated_data, udsid, sid, depth, dq, msg)
+            fail(dq, msg_idx, msg)
             fail_checker = True
+        msg_idx += 1
     return fail_checker
 
 def test_deque(dq, bus):
     global msg_idx
     udsid, sid, data, depth = dq.popleft()
     msg = UDSMessage(udsid, sid, data, depth, bus)
-    save_log(msg_idx,udsid, sid, data)
-    msg_idx += 1
+    save_log(msg_idx, msg)
 
     fail_detection = msg.CheckUDSMessage()
-
+    msg_idx += 1
+    
     if fail_detection:
-        fail(data, udsid, sid, depth, dq, msg_idx, msg)
+        fail(dq, msg_idx, msg)
     else:
         if depth < MAX_DEPTH:
-            if not deterministic_checker(data, bus, udsid, sid, depth, dq, msg):
+            if not deterministic_checker(dq, msg):
                 for mutated_data in nondeterministic_mutator(msg):
                     dq.append((udsid, sid, mutated_data, depth+1))
 
@@ -110,14 +68,6 @@ def main():
     seed_csv_path1 = "seed1.csv"
     seed_csv_path2 = "seed2.csv"
     signal.signal(signal.SIGINT, save_and_exit)
-
-    with open(result_csv_path, "w", newline='') as f: # result csv
-        writer = csv.writer(f)
-        writer.writerow(['idx','NRC','udsid', 'sid', 'data'])
-    
-    with open(send_log_path, "w", newline='') as f: # send log csv
-        writer = csv.writer(f)
-        writer.writerow(['idx','udsid', 'sid', 'data'])
 
     dq1 = deque(read_uds_records_from_csv(seed_csv_path1)) # multi queue for seed1
     dq2 = deque(read_uds_records_from_csv(seed_csv_path2)) # multi queue for seed2
