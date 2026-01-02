@@ -167,11 +167,11 @@ class UDSMessage:
         s_time = time.time()
 
         # 단 한 번만 0x11 0x02 (ECU Reset - Hard Reset) 메시지 전송
-        stack.send(bytes([0x11, 0x02]))
+        stack.send(bytes([0x11, 0x01]))
 
 
-        if not self.reset_wait_response(stack, [0x51, 0x02]):
-            print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 11 02")
+        if not self.reset_wait_response(stack, [0x51, 0x01]):
+            print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 11 01")
 
         prev_udsid = self.udsid
         #print(f"ECU Reset: {time.time()-s_time}")
