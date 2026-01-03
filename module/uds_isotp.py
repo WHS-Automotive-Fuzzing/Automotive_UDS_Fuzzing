@@ -3,6 +3,7 @@ import isotp
 import can
 import time
 from logger import * 
+from uds_send import UDSSender
 
 WAIT_RESPONSE_TIME = 0.2  # seconds
 RESET_WAIT_RESPONSE_TIME = 2
@@ -38,212 +39,125 @@ class UDSMessage:
         if isinstance(e, isotp.errors.FlowControlTimeoutError):
             self.error_detected = True
 
-
     def CheckUDSMessage(self):
         addr = isotp.Address(isotp.AddressingMode.Normal_11bits, txid=self.udsid, rxid=Response_ID[self.udsid])
         params = {"tx_padding": 0xFF}
         stack = isotp.CanStack(bus=self.bus, address=addr, params=params, error_handler=self.error_handler)
+        sender = UDSSender(stack)
 
         print(f"[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] Sending UDS Message: {self.data}")
 
         s_time = time.time()
-        self.StartDiagnosticMode(stack)
+        self.StartDiagnosticMode(sender)
         #print(f"Diagnostic Mode: {time.time()-s_time}")
         if self.diagnosticmodefail or self.error_detected:
-            self.ECUReset(stack)  # ← 반드시 Reset
+            self.ECUReset(sender)  # ← 반드시 Reset
             return self.failed
 
         s_time = time.time()
-        self.FailDetection(stack)
+        self.FailDetection(sender)
         #print(f"Fail detection: {time.time()-s_time}")
 
         if self.error_detected or self.failed:
             print("Error or Fail")
-            self.ECUReset(stack)
+            self.ECUReset(sender)
             return self.failed
 
-        #self.ECUReset(stack)
+        #self.ECUReset(sender)
         return self.failed
 
-    def StartDiagnosticMode(self, stack):
-        retry = 0
-        while retry < 3:
-            stack.send(bytes([0x3E, 0x00]))
-            #stack.send(bytes([0x3E, 0x00]))
-            if self.wait_response(stack, [0x7E, 0x00]):
-                break
-            retry += 1
-
-        if retry == 3:
+    def StartDiagnosticMode(self, sender):
+        # Send Tester Present
+        success, response = sender.SendTesterPresent(retry_count=3)
+        if not success:
             print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 3E 00")
             self.diagnosticmodefail = False
-            #return
+            # return
 
-        retry = 0
-        while retry < 3:
-            stack.send(bytes([0x10, 0x03]))
-            if self.wait_response(stack, [0x50, 0x03]):
-                break
-            retry += 1
-
-        if retry == 3:
+        # Enter Extended Diagnostic Session
+        success, response = sender.EnterDiagnosticSession(session_type=0x03, retry_count=3)
+        if not success:
             print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 10 03")
             self.diagnosticmodefail = True
             return
 
-    def FailDetection(self, stack):
+    def FailDetection(self, sender):
+        # Send UDS message
         send_data = [self.sid] + self.data
-        stack.send(bytes(send_data))
-
-        s_time = time.time()
-        while time.time() - s_time < WAIT_RESPONSE_TIME:
-            stack.process()
-            if stack.available():
-                response = stack.recv(timeout=5)
-                if not response:
-                    self.failed = True
-                    return
-                self.response = response
-                if response[0] == 0x7F and response[2] == 0x78:
-                    return
-                #print(f"[{hex(self.udsid)}][{hex(self.sid)}] Response: {response.hex()}")  # Debugging output
-                break
-            #time.sleep(0.01)
+        success, response = sender.SendUDSMessage(self.sid, self.data, timeout=WAIT_RESPONSE_TIME)
+        
+        if not success or not response:
+            self.failed = True
+            return
+        
+        self.response = response
+        
+        # Check for Response Pending (0x7F XX 0x78)
+        if response[0] == 0x7F and response[2] == 0x78:
+            return
 
         if self.error_detected:
             return
 
-        # Valid request check
-        stack.send(bytes([0x10, 0x01]))
-        if not self.wait_validcheck(stack, [0x50, 0x01]):
+        # Valid request check - try to enter Default Session
+        success, response = sender.EnterDiagnosticSession(session_type=0x01, retry_count=1)
+        if not success:
             self.failed = True
             print(f"Fail Detected! \n[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] [{self.data}] response: {self.response}")
+            if response:
+                self.response = response
 
-    def wait_response(self, stack, expected_data, timeout=WAIT_RESPONSE_TIME):
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-
-            stack.process()
-            if stack.available():
-                response = stack.recv(timeout=5)
-                if response[:len(expected_data)] == bytes(expected_data):
-                    return True
-            #time.sleep(0.01)
-        return False
-    
-    def wait_validcheck(self, stack, expected_data, timeout=WAIT_RESPONSE_TIME):
-        start_time = time.time()
-        response=None
-        while time.time() - start_time < timeout:
-
-            stack.process()
-            if stack.available():
-                response = stack.recv(timeout=5)
-                if response[:len(expected_data)] == bytes(expected_data):
-                    return True
-        
-        if response:
-            self.response = response
-
-        return False
-
-    def reset_wait_response(self, stack, expected_data, timeout=RESET_WAIT_RESPONSE_TIME):
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            stack.process()
-            if stack.available():
-                response = stack.recv(timeout=5)
-                if len(response)>3 and response[2] == 0x78:
-                    response = stack.recv(timeout=5)
-                if response[:len(expected_data)] == bytes(expected_data):
-                    return True
-            #time.sleep(0.01)
-        return False
-
-    def ECUReset(self, stack):
+    def ECUReset(self, sender):
         global prev_udsid
         print("reset")
         s_time = time.time()
 
-        # 단 한 번만 0x11 0x02 (ECU Reset - Hard Reset) 메시지 전송
-        stack.send(bytes([0x11, 0x01]))
-
-
-        if not self.reset_wait_response(stack, [0x51, 0x01]):
-            print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 11 01")
+        # Send ECU Reset (Soft Reset - 0x01)
+        success, response = sender.SendECUReset(reset_type=0x01, retry_count=1, timeout=RESET_WAIT_RESPONSE_TIME)
         
+        if not success:
+            print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 11 01")
         else:
             print("Reset Done!")
 
         prev_udsid = self.udsid
         #print(f"ECU Reset: {time.time()-s_time}")
 
-    '''def ECUReset(self, stack):
-        global prev_udsid
-        retry = 0
-        s_time = time.time()
-        while retry < 3:
-            stack.send(bytes([0x11, 0x02]))
-            if self.wait_response(stack, [0x51, 0x02]):
-                # if self.udsid == prev_udsid:
-                #     # time.sleep(RESET_SLEEP_TIME_DIFF_ID)
-                #     time.sleep(RESET_SLEEP_TIME_SAME_ID)
-                break
-            retry += 1
-        prev_udsid = self.udsid
-        if retry == 3:
-            print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 11 02")
-        print(f"ECU Reset: {time.time()-s_time}")'''
-
     def Debug_fail(self):
         addr = isotp.Address(isotp.AddressingMode.Normal_11bits, txid=self.udsid, rxid=Response_ID[self.udsid])
         params = {"tx_padding": 0xFF}
         stack = isotp.CanStack(bus=self.bus, address=addr, params=params, error_handler=self.error_handler)
+        sender = UDSSender(stack)
 
         print(f"[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] Sending UDS Message: {self.data}")
 
-        self.StartDiagnosticMode(stack)
+        self.StartDiagnosticMode(sender)
         if self.diagnosticmodefail or self.error_detected:
-            self.ECUReset(stack)  # ← 반드시 Reset
+            self.ECUReset(sender)  # ← 반드시 Reset
             return self.failed
 
+        # Send UDS message
         send_data = [self.sid] + self.data
-        stack.send(bytes(send_data))
-
-        s_time = time.time()
-        while time.time() - s_time < WAIT_RESPONSE_TIME:
-            stack.process()
-            if stack.available():
-                response = stack.recv(timeout=5)
-
-                print(f"[{hex(self.udsid)}][{hex(self.sid)}] Response: {response.hex()}")  # Debugging output
-                break
-            #time.sleep(0.01)
+        success, response = sender.SendUDSMessage(self.sid, self.data, timeout=WAIT_RESPONSE_TIME)
+        
+        if response:
+            print(f"[{hex(self.udsid)}][{hex(self.sid)}] Response: {response.hex()}")
 
         if self.error_detected:
             return
 
+        # Send multiple Tester Present
+        sender.SendTesterPresent(retry_count=3)
+        
         # Valid request check
-        retry = 0
-        while retry < 3:
-            stack.send(bytes([0x3E, 0x00]))
-            stack.send(bytes([0x3E, 0x00]))
-            if self.wait_response(stack, [0x7E, 0x00]):
-                break
-            retry += 1
-            
-        stack.send(bytes([0x10, 0x01]))
-        if not self.wait_response(stack, [0x50, 0x01]):
+        success, response = sender.EnterDiagnosticSession(session_type=0x01, retry_count=1)
+        if not success:
             print(f"[{hex(self.udsid)}][{hex(self.sid)}] no response 10 01")
             self.failed = True
 
         if self.error_detected:
-            #print("reset")
-            self.ECUReset(stack)
+            self.ECUReset(sender)
             return self.failed
-
-        # print("reset")
-        # self.ECUReset(stack)
 
 
 class NegativeResponseCodes(object):
