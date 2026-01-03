@@ -122,6 +122,7 @@ class UDSSender:
         Returns:
             tuple: (success: bool, response: bytes or None)
         """
+        response= None
         send_data = [sid] + data
         self.stack.send(bytes(send_data))
         
@@ -130,9 +131,10 @@ class UDSSender:
             self.stack.process()
             if self.stack.available():
                 response = self.stack.recv(timeout=5)
+                #print(response)
                 return True, response
         
-        return False, None
+        return False, response
     
     def SendAndWaitResponse(self, message, expected_response=None, timeout=WAIT_RESPONSE_TIME):
         """

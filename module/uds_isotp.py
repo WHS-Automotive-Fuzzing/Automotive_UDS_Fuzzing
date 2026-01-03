@@ -2,8 +2,8 @@ import cmd
 import isotp
 import can
 import time
-from logger import * 
-from uds_send import UDSSender
+from module.logger import * 
+from module.uds_send import UDSSender
 
 WAIT_RESPONSE_TIME = 0.2  # seconds
 RESET_WAIT_RESPONSE_TIME = 2
@@ -86,12 +86,12 @@ class UDSMessage:
         send_data = [self.sid] + self.data
         success, response = sender.SendUDSMessage(self.sid, self.data, timeout=WAIT_RESPONSE_TIME)
         
-        if not success or not response:
+        if not success:
             self.failed = True
             return
         
         self.response = response
-        
+        # print(self.response)
         # Check for Response Pending (0x7F XX 0x78)
         if response[0] == 0x7F and response[2] == 0x78:
             return
@@ -118,6 +118,7 @@ class UDSMessage:
         if not success:
             print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 11 01")
         else:
+            reset_marker()
             print("Reset Done!")
 
         prev_udsid = self.udsid
