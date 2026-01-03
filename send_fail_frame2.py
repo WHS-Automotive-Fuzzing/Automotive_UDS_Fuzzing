@@ -57,7 +57,7 @@ while records:
         retry_count=3
     )
     
-    if success and response:
+    if success and response is not None :
         print(f"[RESPONSE] {response.hex()}")
     else:
         print("[ERROR] No response or failed")
