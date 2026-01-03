@@ -262,23 +262,19 @@ def call_deterministic_muatate(cnt, data):
         case 10: return arithmetic_dec16(data)
         case 11: return arithmetic_dec32(data)
         case 12: return replace_zeros1(data)
-        case 13: return replace_zeros2(data)
-        case 14: return replace_zeros4(data)
-        case 15: return replace_ffs1(data)
-        case 16: return replace_ffs2(data)
-        case 17: return replace_ffs4(data)
-        case 18: return bitflip1(data)
-        case 19: return bitflip2(data)
-        case 20: return bitflip4(data)
-        case 21: return byteflip8(data)
-        case 22: return byteflip16(data)
-        case 23: return byteflip32(data)
-        case 24: return arithmetic_inc8(data)
-        case 25: return arithmetic_inc16(data)
-        case 26: return arithmetic_inc32(data)
-        case 27: return arithmetic_dec8(data)
-        case 28: return arithmetic_dec16(data)
-        case 29: return arithmetic_dec32(data)
+        case 13: return replace_ffs1(data)
+        case 14: return bitflip1(data)
+        case 15: return bitflip2(data)
+        case 16: return bitflip4(data)
+        case 17: return byteflip8(data)
+        case 18: return byteflip16(data)
+        case 19: return byteflip32(data)
+        case 20: return arithmetic_inc8(data)
+        case 21: return arithmetic_inc16(data)
+        case 22: return arithmetic_inc32(data)
+        case 23: return arithmetic_dec8(data)
+        case 24: return arithmetic_dec16(data)
+        case 25: return arithmetic_dec32(data)
         
         
         
@@ -297,28 +293,10 @@ def call_nondeterministic_mutate(cnt, data):
         case 10: return arithmetic_dec16(data)
         case 11: return arithmetic_dec32(data)
         case 12: return replace_zeros1(data)
-        case 13: return replace_zeros2(data)
-        case 14: return replace_zeros4(data)
-        case 15: return replace_ffs1(data)
-        case 16: return replace_ffs2(data)
-        case 17: return replace_ffs4(data)
-        case 18: return randombytes(data)
-        case 19: return deletebytes(data)
-        case 20: return insertbytes(data)
-        case 21: return byteflip8(data)
-        case 22: return byteflip16(data)
-        case 23: return byteflip32(data)
-        case 24: return arithmetic_inc8(data)
-        case 25: return arithmetic_inc16(data)
-        case 26: return arithmetic_inc32(data)
-        case 27: return arithmetic_dec8(data)
-        case 28: return arithmetic_dec16(data)
-        case 29: return arithmetic_dec32(data)
-        case 30: return bitflip1(data)
-        case 31: return bitflip2(data)
-        case 32: return bitflip4(data)
-        case 33: return randombytes(data)
-        case 34: return deletebytes(data)
+        case 13: return replace_ffs1(data)
+        case 14: return randombytes(data)
+        case 15: return insertbytes(data)
+        case 16: return deletebytes(data)
             
 
         
@@ -326,7 +304,7 @@ def call_nondeterministic_mutate(cnt, data):
 def deterministic_mutator(msg):
     new_data_list = []
 
-    for i in range(30):
+    for i in range(26):
         new_data=msg.data.copy()
         new_data = call_deterministic_muatate(i, new_data)
         new_data_list.append(new_data)
@@ -337,16 +315,28 @@ def deterministic_mutator(msg):
 
 def nondeterministic_mutator(msg):
     new_data_list = []
+    if len(msg.data) <=1:
+        for i in range(MAX_MUATATION_TIME):
+            target_logic = random.randint(1, 0b1<<16)
+            new_data=msg.data.copy()
+            cnt=0
 
-    for i in range(MAX_MUATATION_TIME):
-        target_logic = random.randint(1, 0b100000000000000000000000000000000000)
-        new_data=msg.data.copy()
-        cnt=0
+            while target_logic>>cnt:            
+                if (target_logic>>cnt) & 0b1:
+                    new_data = call_nondeterministic_mutate(cnt, new_data)
+                cnt += 1
+            new_data_list.append(new_data)
 
-        while target_logic>>cnt:            
-            if (target_logic>>cnt) & 0b1:
-                new_data = call_nondeterministic_mutate(cnt, new_data)
-            cnt += 1
-        new_data_list.append(new_data)
+    else: 
+        for i in range(MAX_MUATATION_TIME):
+            target_logic = random.randint(1, 0b1<<17)
+            new_data=msg.data.copy()
+            cnt=0
+
+            while target_logic>>cnt:            
+                if (target_logic>>cnt) & 0b1:
+                    new_data = call_nondeterministic_mutate(cnt, new_data)
+                cnt += 1
+            new_data_list.append(new_data)
 
     return new_data_list
