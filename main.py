@@ -39,21 +39,22 @@ def deterministic_checker(dq, msg):
     fail_checker = False
     for mutated_data in mutated_data_list:
         msg = UDSMessage(msg.udsid, msg.sid, mutated_data, msg.depth, msg.bus)
-        save_log(msg_idx, msg)
 
         if msg.CheckUDSMessage():
             fail(dq, msg_idx, msg)
             fail_checker = True
+        save_log(msg_idx, msg)
         msg_idx += 1
+        
     return fail_checker
 
 def test_deque(dq, bus):
     global msg_idx
     udsid, sid, data, depth = dq.popleft()
     msg = UDSMessage(udsid, sid, data, depth, bus)
-    save_log(msg_idx, msg)
 
     fail_detection = msg.CheckUDSMessage()
+    save_log(msg_idx, msg)
     msg_idx += 1
     
     if fail_detection:
@@ -68,6 +69,7 @@ def main():
     seed_csv_path1 = "seed1.csv"
     seed_csv_path2 = "seed2.csv"
     signal.signal(signal.SIGINT, save_and_exit)
+    open_csv()
 
     dq1 = deque(read_uds_records_from_csv(seed_csv_path1)) # multi queue for seed1
     dq2 = deque(read_uds_records_from_csv(seed_csv_path2)) # multi queue for seed2
