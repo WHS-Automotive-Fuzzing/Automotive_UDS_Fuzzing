@@ -163,3 +163,28 @@ class UDSSender:
                     return False, response
         
         return False, None
+    
+    
+    def StartDiagnosticAndSendMessage(self, message, session_type=0x03, retry_count=3, timeout=WAIT_RESPONSE_TIME):
+        
+        success, diag_response = self.EnterDiagnosticSession(session_type, retry_count)
+        if not success:
+            print("[ERROR] Failed to enter diagnostic session")
+            return False, None, None
+        
+        
+        success, _ = self.SendTesterPresent(retry_count)
+        if not success:
+            print("[ERROR] Failed to send Tester Present")
+            return False, None, diag_response
+        
+        
+
+        success, msg_response = self.SendAndWaitResponse(message, timeout=timeout)
+        if not success:
+            print(f"[ERROR] Failed to send message: {bytes(message).hex()}")
+            return False, None, diag_response
+        
+        print(f"[SUCCESS] Message sent and response received: {msg_response.hex()}")
+        
+        return True, msg_response, diag_response
