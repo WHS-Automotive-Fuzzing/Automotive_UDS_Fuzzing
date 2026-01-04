@@ -123,18 +123,26 @@ class UDSSender:
             tuple: (success: bool, response: bytes or None)
         """
         response= None
+        success = False
         send_data = [sid] + data
         self.stack.send(bytes(send_data))
         
         start_time = time.time()
-        while time.time() - start_time < timeout:
+        while True:
             self.stack.process()
+            if time.time() - start_time >= timeout:
+                break
+  
             if self.stack.available():
                 response = self.stack.recv(timeout=5)
-                #print(response)
-                return True, response
+                if (len(response) >= 3) and (response[0] == 0x7f) and (response[2] == 0x78):
+                    start_time = time.time()
+                    continue
+                else:
+                    success = True
+                    break
         
-        return False, response
+        return success, response
     
     def SendAndWaitResponse(self, message, expected_response=None, timeout=WAIT_RESPONSE_TIME):
         """
@@ -148,25 +156,28 @@ class UDSSender:
         Returns:
             tuple: (success: bool, response: bytes or None)
         """
+        response = None
+        success = False
         self.stack.send(bytes(message))
         
         start_time = time.time()
-        while time.time() - start_time < timeout:
+        while True:
             self.stack.process()
+            if time.time() - start_time >= timeout:
+                break
+  
             if self.stack.available():
                 response = self.stack.recv(timeout=5)
-                # if expected_response is None:
-                #     return True, response
-                # elif response[:len(expected_response)] == bytes(expected_response):
-                #     return True, response
-                if (response[0] == 0x7f) and (response[2] == 0x78):
-                    input('wait..')
-                    response = self.stack.recv(timeout=5)
-                    print(response)
+                if (len(response) >= 3) and (response[0] == 0x7f) and (response[2] == 0x78):
+                    start_time = time.time()
+                    continue
+
+                if expected_response is None:
+                    return True, response
+                elif response[:len(expected_response)] == bytes(expected_response):
                     return True, response
                 else:
-                    return False, response 
-        
+                    return False, response
         return False, None
     
     

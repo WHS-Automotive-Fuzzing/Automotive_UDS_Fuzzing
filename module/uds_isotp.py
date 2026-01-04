@@ -31,7 +31,6 @@ class UDSMessage:
         self.bus = bus
         self.response = None
 
-        self.diagnosticmodefail = False
         self.error_detected = False
         self.failed = False
 
@@ -47,39 +46,37 @@ class UDSMessage:
 
         print(f"[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] Sending UDS Message: {self.data}")
 
-        s_time = time.time()
-        self.StartDiagnosticMode(sender)
-        #print(f"Diagnostic Mode: {time.time()-s_time}")
-        if self.diagnosticmodefail or self.error_detected:
+        diagnosticmode_fail = self.StartDiagnosticMode(sender)
+        if diagnosticmode_fail or self.error_detected:
             self.ECUReset(sender)  # ← 반드시 Reset
             return self.failed
 
-        s_time = time.time()
         self.FailDetection(sender)
-        #print(f"Fail detection: {time.time()-s_time}")
 
-        if self.error_detected or self.failed:
-            print("Error or Fail")
-            self.ECUReset(sender)
-            return self.failed
+        if self.error_detected:
+            print("Error")
+            # self.ECUReset(sender)
+        elif self.failed:
+            print("Fail")
+            # self.ECUReset(sender)
 
-        #self.ECUReset(sender)
+        self.ECUReset(sender)
         return self.failed
 
     def StartDiagnosticMode(self, sender):
         # Send Tester Present
+        Diagnosticmode_fail = False
         success, response = sender.SendTesterPresent(retry_count=3)
         if not success:
             print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 3E 00")
-            self.diagnosticmodefail = False
-            # return
 
         # Enter Extended Diagnostic Session
         success, response = sender.EnterDiagnosticSession(session_type=0x03, retry_count=3)
         if not success:
             print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 10 03")
-            self.diagnosticmodefail = True
-            return
+            Diagnosticmode_fail = True
+        
+        return Diagnosticmode_fail
 
     def FailDetection(self, sender):
         # Send UDS message
@@ -91,7 +88,6 @@ class UDSMessage:
             return
         
         self.response = response
-        # print(self.response)
         # Check for Response Pending (0x7F XX 0x78)
         if response[0] == 0x7F and response[2] == 0x78:
             return
@@ -104,8 +100,7 @@ class UDSMessage:
         if not success:
             self.failed = True
             print(f"Fail Detected! \n[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] [{self.data}] response: {self.response}")
-            if response:
-                self.response = response
+
 
     def ECUReset(self, sender):
         global prev_udsid
