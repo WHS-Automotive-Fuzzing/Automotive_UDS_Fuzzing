@@ -4,6 +4,7 @@ import time
 
 WAIT_RESPONSE_TIME = 0.2  # seconds
 RESET_WAIT_RESPONSE_TIME = 2
+WAIT_SLEEP = 0.01 # Sleep for TesterPresent & DiagnosticSession
 
 class UDSSender:
     def __init__(self, stack):
@@ -47,6 +48,7 @@ class UDSSender:
             success, response = self.wait_response([0x7E, 0x00])
             if success:
                 return True, response
+            time.sleep(WAIT_SLEEP)
             retry += 1
         
         return False, None
@@ -70,6 +72,7 @@ class UDSSender:
             success, response = self.wait_response(expected_response)
             if success:
                 return True, response
+            time.sleep(WAIT_SLEEP)
             retry += 1
         
         return False, None
@@ -88,27 +91,34 @@ class UDSSender:
         """
         expected_response = [0x51, reset_type]
         retry = 0
-        
+        success = False
+        response = None
         while retry < retry_count:
             self.stack.send(bytes([0x11, reset_type]))
             
             # Wait for response with longer timeout for reset
             start_time = time.time()
-            while time.time() - start_time < timeout:
+
+            while True:
                 self.stack.process()
+                if time.time() - start_time >= timeout:
+                    break
+    
                 if self.stack.available():
                     response = self.stack.recv(timeout=5)
-                    # Handle pending response (0x78)
-                    if len(response) > 3 and response[2] == 0x78:
-                        response = self.stack.recv(timeout=5)
-                    
-                    if response[:len(expected_response)] == bytes(expected_response):
-                        return True, response
+                    if (len(response) >= 3) and (response[0] == 0x7f) and (response[2] == 0x78):
+                        start_time = time.time()
+                        # time.sleep(WAIT_SLEEP) # Reset 안되면 여기도 한면 sleep 추가해보기
+                        continue
+                    elif response[:len(expected_response)] == bytes(expected_response):
+                        success = True
+                        return success, response
                     else:
                         break
+                # time.sleep(WAIT_SLEEP) # Reset 안되면 여기도 한면 sleep 추가해보기
             retry += 1
         
-        return False, None
+        return success, response
     
     def SendUDSMessage(self, sid, data, timeout=WAIT_RESPONSE_TIME):
         """

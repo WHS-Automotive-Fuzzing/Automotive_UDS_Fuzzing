@@ -80,7 +80,6 @@ class UDSMessage:
 
     def FailDetection(self, sender):
         # Send UDS message
-        send_data = [self.sid] + self.data
         success, response = sender.SendUDSMessage(self.sid, self.data, timeout=WAIT_RESPONSE_TIME)
         
         if not success:
@@ -104,11 +103,10 @@ class UDSMessage:
 
     def ECUReset(self, sender):
         global prev_udsid
-        print("reset")
-        s_time = time.time()
+        print("Reset")
 
         # Send ECU Reset (Soft Reset - 0x01)
-        success, response = sender.SendECUReset(reset_type=0x01, retry_count=1, timeout=RESET_WAIT_RESPONSE_TIME)
+        success, response = sender.SendECUReset(reset_type=0x01, retry_count=3, timeout=RESET_WAIT_RESPONSE_TIME)
         
         if not success:
             print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 11 01")
@@ -133,7 +131,6 @@ class UDSMessage:
             return self.failed
 
         # Send UDS message
-        send_data = [self.sid] + self.data
         success, response = sender.SendUDSMessage(self.sid, self.data, timeout=WAIT_RESPONSE_TIME)
         
         if response:
