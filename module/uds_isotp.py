@@ -79,26 +79,30 @@ class UDSMessage:
         return Diagnosticmode_fail
 
     def FailDetection(self, sender):
+        # Clear DTC First
+        success = sender.SendDTCClear(timeout=WAIT_RESPONSE_TIME)
+        if not success:
+            print(f"[{self.sid}] DTC Clear Fail.")
+            return
+        
+        # Check DTC before sending message
+        success, First_DTC_reponse = sender.SendDTCRequest(timeout=WAIT_RESPONSE_TIME)
+
+        if not success:
+            print(f"[{self.sid}] First DTC Request Fail.")
+            return
+        
         # Send UDS message
-        success, response = sender.SendUDSMessage(self.sid, self.data, timeout=WAIT_RESPONSE_TIME)
+        success, _ = sender.SendUDSMessage(self.sid, self.data, timeout=WAIT_RESPONSE_TIME)
         
-        if not success:
+        # Check DTC after sending message
+        success, Second_DTC_reponse = sender.SendDTCRequest(timeout=WAIT_RESPONSE_TIME)
+
+        # if no/negative response or New DTC occur, then regard message as Fail Message
+        if not success or (First_DTC_reponse != Second_DTC_reponse):
+            print(f"[{self.sid}] Fail Detected.")
             self.failed = True
             return
-        
-        self.response = response
-        # Check for Response Pending (0x7F XX 0x78)
-        if response[0] == 0x7F and response[2] == 0x78:
-            return
-
-        if self.error_detected:
-            return
-
-        # Valid request check - try to enter Default Session
-        success, response = sender.EnterDiagnosticSession(session_type=0x01, retry_count=1)
-        if not success:
-            self.failed = True
-            print(f"Fail Detected! \n[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] [{self.data}] response: {self.response}")
 
 
     def ECUReset(self, sender):

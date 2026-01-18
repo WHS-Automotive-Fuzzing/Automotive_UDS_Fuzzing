@@ -139,21 +139,98 @@ class UDSSender:
         
         start_time = time.time()
         while True:
+            if time.time() - start_time >= timeout:
+                break
+            
+            self.stack.process()
+            if self.stack.available():
+                response = self.stack.recv(timeout=5)
+                if (len(response) >= 3) and (response[0] == 0x7f) and (response[2] == 0x78):
+                    start_time = time.time()
+                    continue
+                
+                if len(response) > 0:
+                    success = True
+                    break
+        
+        return success, response
+    
+    def SendDTCRequest(self, timeout=WAIT_RESPONSE_TIME):
+        """
+        Send custom message and optionally wait for expected response
+        
+        Args:
+            message: List of bytes to send
+            expected_response: List of expected bytes (None to accept any response)
+            timeout: Timeout for response
+        
+        Returns:
+            tuple: (success: bool, response: bytes or None)
+        """
+        response = None
+        success = False
+        self.stack.send(bytes([0x19, 0x02]))
+        
+        start_time = time.time()
+        while True:
             self.stack.process()
             if time.time() - start_time >= timeout:
                 break
   
             if self.stack.available():
                 response = self.stack.recv(timeout=5)
-                if (len(response) >= 3) and (response[0] == 0x7f) and (response[2] == 0x78):
-                    start_time = time.time()
-                    continue
-                else:
+                if (len(response) >= 3) and (response[0] == 0x7f):
+                    if response[2] == 0x78:
+                        start_time = time.time()
+                        continue
+                    elif response[2] == 0x14: # Response Too long -> Success 
+                        success = True
+                        break
+                    else: # Other NRC -> Fail
+                        break
+
+                if (len(response) >= 3) and (response[0] == 0x59):
                     success = True
                     break
-        
         return success, response
-    
+
+    def SendDTCClear(self, timeout=WAIT_RESPONSE_TIME):
+        """
+        Send custom message and optionally wait for expected response
+        
+        Args:
+            message: List of bytes to send
+            expected_response: List of expected bytes (None to accept any response)
+            timeout: Timeout for response
+        
+        Returns:
+            tuple: (success: bool, response: bytes or None)
+        """
+        response = None
+        success = False
+        self.stack.send(bytes([0x14, 0xFF, 0xFF, 0xFF]))
+        
+        start_time = time.time()
+        while True:
+            self.stack.process()
+            if time.time() - start_time >= timeout:
+                break
+  
+            if self.stack.available():
+                response = self.stack.recv(timeout=5)
+                if (len(response) >= 3) and (response[0] == 0x7f):
+                    if response[2] == 0x78:
+                        start_time = time.time()
+                        continue
+                    else:
+                        success = False
+                        break
+
+                if (len(response) >= 3) and (response[0] == 0x54):
+                    success = True
+                    break
+        return success
+
     def SendAndWaitResponse(self, message, expected_response=None, timeout=WAIT_RESPONSE_TIME):
         """
         Send custom message and optionally wait for expected response
