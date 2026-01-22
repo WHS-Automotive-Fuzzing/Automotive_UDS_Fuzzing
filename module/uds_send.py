@@ -155,81 +155,145 @@ class UDSSender:
         
         return success, response
     
-    def SendDTCRequest(self, timeout=WAIT_RESPONSE_TIME):
+    def SendDTCRequest(self, timeout=WAIT_RESPONSE_TIME, enter_diagnostic=True, session_type=0x03, retry_count=3, status_mask=0x20):
         """
-        Send custom message and optionally wait for expected response
+        Send DTC Read request (0x19 0x02 [status_mask])
         
         Args:
-            message: List of bytes to send
-            expected_response: List of expected bytes (None to accept any response)
             timeout: Timeout for response
+            enter_diagnostic: Whether to enter diagnostic session before sending
+            session_type: Diagnostic session type (default: 0x03 Extended)
+            retry_count: Number of retry attempts for diagnostic session
+            status_mask: DTC status mask (default: 0x30 = TestNotCompletedSinceLastClear | TestFailedSinceLastClear)
         
         Returns:
             tuple: (success: bool, response: bytes or None)
         """
+        # 진단 세션 진입
+        if enter_diagnostic:
+            print(f"[DEBUG] Entering diagnostic session (type: 0x{session_type:02X})...")
+            success, diag_resp = self.EnterDiagnosticSession(session_type, retry_count)
+            if not success:
+                print("[ERROR] Failed to enter diagnostic session for DTC request")
+                return False, None
+            print(f"[DEBUG] Diagnostic session entered: {diag_resp.hex() if diag_resp else 'None'}")
+        
         response = None
         success = False
-        self.stack.send(bytes([0x19, 0x02]))
+        
+        print(f"[DEBUG] Sending DTC request (0x19 0x02 0x{status_mask:02X})...")
+        self.stack.send(bytes([0x19, 0x02, status_mask]))
         
         start_time = time.time()
         while True:
             self.stack.process()
             if time.time() - start_time >= timeout:
+                print(f"[DEBUG] DTC request timeout after {timeout}s")
                 break
-  
+
             if self.stack.available():
                 response = self.stack.recv(timeout=5)
+                print(f"[DEBUG] DTC response received: {response.hex()}")
+                
                 if (len(response) >= 3) and (response[0] == 0x7f):
-                    if response[2] == 0x78:
+                    nrc = response[2]
+                    print(f"[DEBUG] Received NRC: 0x{nrc:02X}")
+                    
+                    if nrc == 0x78:  # RequestCorrectlyReceived-ResponsePending
+                        print("[DEBUG] Response pending (0x78), waiting...")
                         start_time = time.time()
                         continue
-                    elif response[2] == 0x14: # Response Too long -> Success 
+                    elif nrc == 0x14:  # ResponseTooLong
+                        print("[DEBUG] Response too long (0x14) - treating as success")
                         success = True
                         break
-                    else: # Other NRC -> Fail
+                    else:  # Other NRC
+                        nrc_meanings = {
+                            0x11: "Service Not Supported",
+                            0x12: "Sub-Function Not Supported",
+                            0x13: "Incorrect Message Length Or Invalid Format",
+                            0x22: "Conditions Not Correct",
+                            0x31: "Request Out of Range",
+                            0x33: "Security Access Denied",
+                            0x7F: "Service Not Supported in Active Session"
+                        }
+                        print(f"[ERROR] NRC 0x{nrc:02X}: {nrc_meanings.get(nrc, 'Unknown')}")
                         break
 
                 if (len(response) >= 3) and (response[0] == 0x59):
+                    print("[DEBUG] Positive response (0x59) received")
                     success = True
                     break
+        
         return success, response
 
-    def SendDTCClear(self, timeout=WAIT_RESPONSE_TIME):
+    def SendDTCClear(self, timeout=WAIT_RESPONSE_TIME, enter_diagnostic=True, session_type=0x03, retry_count=3):
         """
-        Send custom message and optionally wait for expected response
+        Send DTC Clear command (0x14 0xFF 0xFF 0xFF)
         
         Args:
-            message: List of bytes to send
-            expected_response: List of expected bytes (None to accept any response)
             timeout: Timeout for response
+            enter_diagnostic: Whether to enter diagnostic session before sending
+            session_type: Diagnostic session type (default: 0x03 Extended)
+            retry_count: Number of retry attempts for diagnostic session
         
         Returns:
             tuple: (success: bool, response: bytes or None)
         """
+        # 진단 세션 진입
+        if enter_diagnostic:
+            print(f"[DEBUG] Entering diagnostic session (type: 0x{session_type:02X})...")
+            success, diag_resp = self.EnterDiagnosticSession(session_type, retry_count)
+            if not success:
+                print("[ERROR] Failed to enter diagnostic session for DTC clear")
+                return False, None
+            print(f"[DEBUG] Diagnostic session entered: {diag_resp.hex() if diag_resp else 'None'}")
+        
         response = None
         success = False
+        
+        print("[DEBUG] Sending DTC clear (0x14 0xFF 0xFF 0xFF)...")
         self.stack.send(bytes([0x14, 0xFF, 0xFF, 0xFF]))
         
         start_time = time.time()
         while True:
             self.stack.process()
             if time.time() - start_time >= timeout:
+                print(f"[DEBUG] DTC clear timeout after {timeout}s")
                 break
   
             if self.stack.available():
                 response = self.stack.recv(timeout=5)
+                print(f"[DEBUG] DTC clear response received: {response.hex()}")
+                
                 if (len(response) >= 3) and (response[0] == 0x7f):
-                    if response[2] == 0x78:
+                    nrc = response[2]
+                    print(f"[DEBUG] Received NRC: 0x{nrc:02X}")
+                    
+                    if nrc == 0x78:  # RequestCorrectlyReceived-ResponsePending
+                        print("[DEBUG] Response pending (0x78), waiting...")
                         start_time = time.time()
                         continue
                     else:
+                        nrc_meanings = {
+                            0x11: "Service Not Supported",
+                            0x12: "Sub-Function Not Supported",
+                            0x13: "Incorrect Message Length Or Invalid Format",
+                            0x22: "Conditions Not Correct",
+                            0x31: "Request Out of Range",
+                            0x33: "Security Access Denied",
+                            0x7F: "Service Not Supported in Active Session"
+                        }
+                        print(f"[ERROR] NRC 0x{nrc:02X}: {nrc_meanings.get(nrc, 'Unknown')}")
                         success = False
                         break
 
-                if (len(response) >= 3) and (response[0] == 0x54):
+                if (len(response) >= 1) and (response[0] == 0x54):
+                    print("[DEBUG] Positive response (0x54) received")
                     success = True
                     break
-        return success
+        
+        return success, response
 
     def SendAndWaitResponse(self, message, expected_response=None, timeout=WAIT_RESPONSE_TIME):
         """
@@ -269,11 +333,22 @@ class UDSSender:
     
     
     def StartDiagnosticAndSendMessage(self, message, session_type=0x03, retry_count=3, timeout=WAIT_RESPONSE_TIME):
+        """
+        Start diagnostic session and send a message
         
+        Args:
+            message: Message to send after entering diagnostic session
+            session_type: Diagnostic session type
+            retry_count: Number of retry attempts
+            timeout: Timeout for message response
+        
+        Returns:
+            tuple: (success: bool, msg_response: bytes or None, diag_response: bytes or None)
+        """
         success, _ = self.SendTesterPresent(retry_count)
         if not success:
             print("[ERROR] Failed to send Tester Present")
-            return False, None, diag_response
+            return False, None, None
         
         success, diag_response = self.EnterDiagnosticSession(session_type, retry_count)
         if not success:
