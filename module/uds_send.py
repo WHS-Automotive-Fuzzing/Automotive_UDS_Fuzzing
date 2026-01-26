@@ -65,6 +65,8 @@ class UDSSender:
             tuple: (success: bool, response: bytes or None)
         """
         expected_response = [0x50, session_type]
+        success = False
+        response = None
         retry = 0
         
         while retry < retry_count:
@@ -75,7 +77,7 @@ class UDSSender:
             time.sleep(WAIT_SLEEP)
             retry += 1
         
-        return False, None
+        return success, response
     
     def SendECUReset(self, reset_type=0x01, retry_count=3, timeout=RESET_WAIT_RESPONSE_TIME):
         """

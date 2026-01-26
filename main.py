@@ -53,11 +53,11 @@ def test_deque(dq, bus):
     udsid, sid, data, depth = dq.popleft()
     msg = UDSMessage(udsid, sid, data, depth, bus)
 
-    fail_detection = msg.CheckUDSMessage()
+    fail_level = msg.CheckUDSMessage()
     save_log(msg_idx, msg)
     msg_idx += 1
     
-    if fail_detection:
+    if fail_level > 0:
         fail(dq, msg_idx, msg)
     else:
         if depth < MAX_DEPTH:

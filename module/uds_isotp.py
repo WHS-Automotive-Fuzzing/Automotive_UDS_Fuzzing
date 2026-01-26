@@ -33,6 +33,7 @@ class UDSMessage:
 
         self.error_detected = False
         self.failed = False
+        self.fail_level = 0
 
     def error_handler(self, e):
         if isinstance(e, isotp.errors.FlowControlTimeoutError):
@@ -46,10 +47,10 @@ class UDSMessage:
 
         print(f"[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] Sending UDS Message: {self.data}")
 
-        diagnosticmode_fail = self.StartDiagnosticMode(sender)
-        if diagnosticmode_fail or self.error_detected:
-            self.ECUReset(sender)  # ← 반드시 Reset
-            return self.failed
+        # diagnosticmode_fail = self.StartDiagnosticMode(sender)
+        # if diagnosticmode_fail or self.error_detected:
+        #     self.ECUReset(sender)  # ← 반드시 Reset
+        #     return self.fail_level
 
         self.FailDetection(sender)
 
@@ -61,8 +62,8 @@ class UDSMessage:
             # self.ECUReset(sender)
 
         self.ECUReset(sender)
-        return self.failed
-
+        return self.fail_level
+    
     def StartDiagnosticMode(self, sender):
         # Send Tester Present
         Diagnosticmode_fail = False
@@ -77,6 +78,26 @@ class UDSMessage:
             Diagnosticmode_fail = True
         
         return Diagnosticmode_fail
+
+    def Check_ECU_Alive(self, sender):        
+        success, _= sender.EnterDiagnosticSession(session_type=0x01, retry_count=5)
+        if not success:
+            print(f"[{hex(self.udsid)}][{hex(self.sid)}] Fail Detected: no response 10 01")
+        
+        return success
+    
+    def Set_Fail_Level(self, Alive_Fail):
+        if self.failed:
+            if Alive_Fail:
+                self.fail_level = 3
+            else:
+                self.fail_level = 2
+        else:
+            if Alive_Fail:
+                self.fail_level = 1
+            else:
+                self.fail_level = 0
+        
 
     def FailDetection(self, sender):
         # Clear DTC First
@@ -100,9 +121,12 @@ class UDSMessage:
 
         # if no/negative response or New DTC occur, then regard message as Fail Message
         if not success or (First_DTC_reponse != Second_DTC_reponse):
-            print(f"[{self.sid}] Fail Detected.")
+            print(f"[{self.sid}] Fail Detected: Different DTC Response.")
             self.failed = True
-            return
+        
+        self.Set_Fail_Level(self.Check_ECU_Alive(sender))
+
+        return
 
 
     def ECUReset(self, sender):
@@ -110,10 +134,10 @@ class UDSMessage:
         print("Reset")
 
         # Send ECU Reset (Soft Reset - 0x01)
-        success, response = sender.SendECUReset(reset_type=0x01, retry_count=3, timeout=RESET_WAIT_RESPONSE_TIME)
+        success, response = sender.SendECUReset(reset_type=0x02, retry_count=3, timeout=RESET_WAIT_RESPONSE_TIME)
         
         if not success:
-            print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 11 01")
+            print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 11 02")
         else:
             reset_marker()
             print("Reset Done!")

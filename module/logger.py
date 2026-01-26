@@ -10,7 +10,7 @@ send_buffer = []
 def open_csv():
     with open(result_csv_path, "w", newline='') as f: # result csv
         writer = csv.writer(f)
-        writer.writerow(['idx','udsid', 'sid', 'data', 'response'])
+        writer.writerow(['idx', 'fail_level','udsid', 'sid', 'data', 'response'])
     
     with open(send_log_path, "w", newline='') as f: # send log csv
         writer = csv.writer(f)
@@ -23,7 +23,7 @@ def save_result(msg_idx, msg):
         response_str = ' '.join(f"{byte:02X}" for byte in msg.response)
     else:
         response_str = ""
-    hex_row = [f"{msg_idx}",f"{msg.udsid:03X}", f"{msg.sid:02X}", data_str, response_str]
+    hex_row = [f"{msg_idx}",f"{msg.fail_level}",f"{msg.udsid:03X}", f"{msg.sid:02X}", data_str, response_str]
     buffer.append(hex_row)
     if len(buffer) >= 10:
         with open(result_csv_path, "a", newline='') as f:
