@@ -86,14 +86,14 @@ class UDSMessage:
         
         return success
     
-    def Set_Fail_Level(self, Alive_Fail):
+    def Set_Fail_Level(self, Alive):
         if self.failed:
-            if Alive_Fail:
+            if not Alive:
                 self.fail_level = 3
             else:
                 self.fail_level = 2
         else:
-            if Alive_Fail:
+            if not Alive:
                 self.fail_level = 1
             else:
                 self.fail_level = 0
