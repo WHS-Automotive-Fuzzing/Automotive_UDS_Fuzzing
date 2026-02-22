@@ -3,6 +3,7 @@ import csv
 import can
 import time
 import signal
+import hashlib
 from collections import deque
 from module.uds_isotp import *
 from module.mutator import *
@@ -10,6 +11,11 @@ from module.logger import *
 
 MAX_DEPTH = 10
 msg_idx=0
+tested_hashes = set()
+
+def get_message_hash(udsid, sid, data):
+    hash_input = f"{udsid}_{sid}_{data}".encode('utf-8')
+    return hashlib.md5(hash_input).hexdigest()
 
 def read_uds_records_from_csv(path: str):
     records = []
@@ -40,6 +46,11 @@ def deterministic_checker(dq, msg):
     for mutated_data in mutated_data_list:
         msg = UDSMessage(msg.udsid, msg.sid, mutated_data, msg.depth, msg.bus)
 
+        msg_hash = get_message_hash(msg.udsid, msg.sid, msg.data)
+        if msg_hash in tested_hashes:
+            continue
+        tested_hashes.add(msg_hash)
+
         if msg.CheckUDSMessage():
             fail(dq, msg_idx, msg)
             fail_checker = True
@@ -51,6 +62,12 @@ def deterministic_checker(dq, msg):
 def test_deque(dq, bus):
     global msg_idx
     udsid, sid, data, depth = dq.popleft()
+
+    msg_hash = get_message_hash(udsid, sid, data)
+    if msg_hash in tested_hashes:
+        return
+    tested_hashes.add(msg_hash)
+
     msg = UDSMessage(udsid, sid, data, depth, bus)
 
     fail_level = msg.CheckUDSMessage()
