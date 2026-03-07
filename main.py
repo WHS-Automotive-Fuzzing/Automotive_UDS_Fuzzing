@@ -47,6 +47,7 @@ def deterministic_checker(dq, msg):
             continue
         tested_hashes.add(msg_hash)
 
+        print(f"[{msg_idx}] Sending UDS Message...")
         if msg.CheckUDSMessage():
             fail(dq, msg_idx, msg)
             fail_checker = True
@@ -70,6 +71,7 @@ def test_deque(dq, bus):
 
     msg = UDSMessage(udsid, sid, data, depth, bus)
 
+    print(f"[{msg_idx}] Sending UDS Message...")
     fail_level = msg.CheckUDSMessage()
     save_log(msg_idx, msg)
     msg_idx += 1
