@@ -139,7 +139,6 @@ class UDSMessage:
         if not success:
             print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 11 02")
         else:
-            reset_marker()
             print("Reset Done!")
 
         prev_udsid = self.udsid

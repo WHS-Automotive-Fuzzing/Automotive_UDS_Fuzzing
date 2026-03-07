@@ -9,6 +9,7 @@ from module.mutator import *
 from module.logger import *
 
 MAX_DEPTH = 10
+MAX_MSG_IDX = 30000  # Set the maximum message index
 msg_idx=0
 tested_hashes = set()
 
@@ -52,6 +53,10 @@ def deterministic_checker(dq, msg):
         save_log(msg_idx, msg)
         msg_idx += 1
         
+        if msg_idx >= MAX_MSG_IDX:
+            print(f"Reached maximum message index ({MAX_MSG_IDX}). Stopping program.")
+            save_and_exit(None, None)
+        
     return fail_checker
 
 def test_deque(dq, bus):
@@ -68,6 +73,10 @@ def test_deque(dq, bus):
     fail_level = msg.CheckUDSMessage()
     save_log(msg_idx, msg)
     msg_idx += 1
+    
+    if msg_idx >= MAX_MSG_IDX:
+        print(f"Reached maximum message index ({MAX_MSG_IDX}). Stopping program.")
+        save_and_exit(None, None)
     
     if fail_level > 0:
         fail(dq, msg_idx, msg)
