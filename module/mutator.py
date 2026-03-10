@@ -4,8 +4,8 @@ import isotp
 from module.uds_isotp import *
 import time
 
-MAX_MUTATION_PER_LOGIC = 4
-MAX_MUATATION_TIME = 2
+MAX_MUTATION_BYTE = 4
+MAX_MUTATION_TIME = 2
 
 def bitflip1(data):
     #flip 1 random bit in data
@@ -134,7 +134,7 @@ def arithmetic_dec32(data):
     
 def randombytes(data):
     # set random bytes to random value
-    how_many_set = random.randint(1, MAX_MUTATION_PER_LOGIC)
+    how_many_set = random.randint(1, MAX_MUTATION_BYTE)
     for i in range(how_many_set):
         idx = random.randrange(len(data))
         data[idx] = random.randint(0, 255)
@@ -148,7 +148,7 @@ def deletebytes(data):
     if n <= 1:
         return data  # 0방지
 
-    random_bytes = random.randint(1, MAX_MUTATION_PER_LOGIC)
+    random_bytes = random.randint(1, MAX_MUTATION_BYTE)
     how_many_bytes = min(random_bytes, n - 1)
 
     idx = random.randint(0, n - how_many_bytes)
@@ -163,7 +163,7 @@ def insertbytes(data):
     if len(data) == 0:
         return data  # Return the data unchanged if it's empty
     
-    random_bytes = random.randint(1, MAX_MUTATION_PER_LOGIC)
+    random_bytes = random.randint(1, MAX_MUTATION_BYTE)
     idx = random.randrange(len(data))  # Only execute if data is not empty
     
     for i in range(random_bytes):
@@ -316,7 +316,7 @@ def deterministic_mutator(msg):
 def nondeterministic_mutator(msg):
     new_data_list = []
     if len(msg.data) <=1:
-        for i in range(MAX_MUATATION_TIME):
+        for i in range(MAX_MUTATION_TIME):
             target_logic = random.randint(1, 0b1<<16)
             new_data=msg.data.copy()
             cnt=0
@@ -328,7 +328,7 @@ def nondeterministic_mutator(msg):
             new_data_list.append(new_data)
 
     else: 
-        for i in range(MAX_MUATATION_TIME):
+        for i in range(MAX_MUTATION_TIME):
             target_logic = random.randint(1, 0b1<<17)
             new_data=msg.data.copy()
             cnt=0
