@@ -43,7 +43,6 @@ class UDSMessage:
         print(f"[{hex(self.udsid)}][{hex(self.sid)}] [Depth: {self.depth}] Sending UDS Message: {self.data}")
 
         if self.diagnosticmodefail or self.error_detected:
-            self.ECUReset(stack)  # ← 반드시 Reset
             return self.failed
 
         self.FailDetection(stack)
