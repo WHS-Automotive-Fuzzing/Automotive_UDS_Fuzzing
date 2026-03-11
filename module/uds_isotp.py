@@ -114,11 +114,27 @@ class UDSMessage:
 
     def ECUReset(self, stack):
         retry = 0
+        expected_response = [0x51, 0x02]
         while retry < 3:
-            stack.send(bytes([0x11, 0x02]))
-            if self.wait_response(stack, [0x51, 0x02]):
-                time.sleep(RESET_SLEEP_TIME)
-                break
+            start_time = time.time()
+
+            while True:
+                self.stack.process()
+                if time.time() - start_time >= 2:
+                    break
+    
+                if self.stack.available():
+                    response = self.stack.recv(timeout=5)
+                    if (len(response) >= 3) and (response[0] == 0x7f) and (response[2] == 0x78):
+                        start_time = time.time()
+                        # time.sleep(WAIT_SLEEP) # Reset 안되면 여기도 한면 sleep 추가해보기
+                        continue
+                    elif response[:len(expected_response)] == bytes(expected_response):
+                        success = True
+                        return 
+                    else:
+                        break
+                # time.sleep(WAIT_SLEEP) # Reset 안되면 여기도 한면 sleep 추가해보기
             retry += 1
         if retry == 3:
             print(f"[{hex(self.udsid)}][{hex(self.sid)}]: no response 11 02")
