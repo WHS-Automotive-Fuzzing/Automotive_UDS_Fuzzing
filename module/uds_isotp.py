@@ -49,8 +49,7 @@ class UDSMessage:
         self.FailDetection(stack)
 
         if self.error_detected:
-            self.ECUReset(stack)
-            return self.failed
+            print("error")
 
         self.ECUReset(stack)
         return self.failed
