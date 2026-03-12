@@ -114,6 +114,7 @@ class UDSMessage:
         retry = 0
         expected_response = [0x51, 0x02]
         while retry < 3:
+            self.stack.send(bytes([0x11, 0x02]))
             start_time = time.time()
 
             while True:
