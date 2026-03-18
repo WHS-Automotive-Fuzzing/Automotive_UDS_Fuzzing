@@ -71,10 +71,27 @@ class UDSSender:
         
         while retry < retry_count:
             self.stack.send(bytes([0x10, session_type]))
-            success, response = self.wait_response(expected_response)
-            if success:
-                return True, response
-            time.sleep(WAIT_SLEEP)
+            
+            # Wait for response with longer timeout for reset
+            start_time = time.time()
+
+            while True:
+                self.stack.process()
+                if time.time() - start_time >= timeout:
+                    break
+    
+                if self.stack.available():
+                    response = self.stack.recv(timeout=5)
+                    if (len(response) >= 3) and (response[0] == 0x7f) and (response[2] == 0x78):
+                        start_time = time.time()
+                        # time.sleep(WAIT_SLEEP) # Reset 안되면 여기도 한면 sleep 추가해보기
+                        continue
+                    elif response[:len(expected_response)] == bytes(expected_response):
+                        success = True
+                        return success, response
+                    else:
+                        break
+                # time.sleep(WAIT_SLEEP) # Reset 안되면 여기도 한면 sleep 추가해보기
             retry += 1
         
         return success, response
