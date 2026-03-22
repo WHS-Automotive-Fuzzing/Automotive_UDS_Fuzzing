@@ -77,7 +77,7 @@ class UDSSender:
 
             while True:
                 self.stack.process()
-                if time.time() - start_time >= timeout:
+                if time.time() - start_time >= WAIT_RESPONSE_TIME:
                     break
     
                 if self.stack.available():
