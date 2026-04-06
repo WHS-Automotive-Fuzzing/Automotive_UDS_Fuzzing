@@ -263,19 +263,7 @@ def call_deterministic_muatate(cnt, data):
         case 11: return arithmetic_dec32(data)
         case 12: return replace_zeros1(data)
         case 13: return replace_ffs1(data)
-        case 14: return bitflip1(data)
-        case 15: return bitflip2(data)
-        case 16: return bitflip4(data)
-        case 17: return byteflip8(data)
-        case 18: return byteflip16(data)
-        case 19: return byteflip32(data)
-        case 20: return arithmetic_inc8(data)
-        case 21: return arithmetic_inc16(data)
-        case 22: return arithmetic_inc32(data)
-        case 23: return arithmetic_dec8(data)
-        case 24: return arithmetic_dec16(data)
-        case 25: return arithmetic_dec32(data)
-        
+       
         
         
 def call_nondeterministic_mutate(cnt, data):
@@ -304,7 +292,7 @@ def call_nondeterministic_mutate(cnt, data):
 def deterministic_mutator(msg):
     new_data_list = []
 
-    for i in range(26):
+    for i in range(14):
         new_data=msg.data.copy()
         new_data = call_deterministic_muatate(i, new_data)
         new_data_list.append(new_data)
