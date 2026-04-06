@@ -79,7 +79,10 @@ class UDSMessage:
         
         return Diagnosticmode_fail
 
-    def Check_ECU_Alive(self, sender):        
+    def Check_ECU_Alive(self, sender):
+        success, response = sender.SendTesterPresent(retry_count=3)
+        if not success:
+            print("ECU_ALIVE_TesterPresent Fail")
         success, response= sender.EnterDiagnosticSession(session_type=0x01, retry_count=5)
         if not success:
             print(f"[{hex(self.udsid)}][{hex(self.sid)}][{response}] Fail Detected: no response 10 01")
