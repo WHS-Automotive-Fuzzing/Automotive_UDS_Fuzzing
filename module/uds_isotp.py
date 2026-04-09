@@ -123,6 +123,9 @@ class UDSMessage:
         success, Second_DTC_reponse = sender.SendDTCRequest(timeout=WAIT_RESPONSE_TIME)
 
         # if no/negative response or New DTC occur, then regard message as Fail Message
+        if not success:
+            print("No Second DTC")
+        
         if not success or (First_DTC_reponse != Second_DTC_reponse):
             print(f"[{self.sid}] Fail Detected: Different DTC Response.")
             self.failed = True
