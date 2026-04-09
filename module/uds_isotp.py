@@ -124,7 +124,7 @@ class UDSMessage:
 
         # if no/negative response or New DTC occur, then regard message as Fail Message
         if not success:
-            print("No Second DTC")
+            print(f"[{self.sid}] Second DTC Request Fail.")
         
         if not success or (First_DTC_reponse != Second_DTC_reponse):
             print(f"[{self.sid}] Fail Detected: Different DTC Response.")
@@ -136,10 +136,7 @@ class UDSMessage:
 
 
     def ECUReset(self, sender):
-        global prev_udsid
-        print("Reset")
-
-        # Send ECU Reset (Soft Reset - 0x01)
+        # Send ECU Reset (Soft Reset - 0x02)
         success, response = sender.SendECUReset(reset_type=0x02, retry_count=3, timeout=RESET_WAIT_RESPONSE_TIME)
         
         if not success:
