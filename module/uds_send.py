@@ -82,7 +82,7 @@ class UDSSender:
     
                 if self.stack.available():
                     response = self.stack.recv(timeout=5)
-                    if (len(response) >= 3) and (response[0] == 0x7f) and (response[2] == 0x78):
+                    if (len(response) >= 3) and (response[0] == 0x7f) and ((response[2] == 0x78) or (response[2] == 0x21)):
                         start_time = time.time()
                         # time.sleep(WAIT_SLEEP) # Reset 안되면 여기도 한면 sleep 추가해보기
                         continue
@@ -125,7 +125,7 @@ class UDSSender:
     
                 if self.stack.available():
                     response = self.stack.recv(timeout=5)
-                    if (len(response) >= 3) and (response[0] == 0x7f) and (response[2] == 0x78):
+                    if (len(response) >= 3) and (response[0] == 0x7f) and ((response[2] == 0x78) or (response[2] == 0x21)):
                         start_time = time.time()
                         # time.sleep(WAIT_SLEEP) # Reset 안되면 여기도 한면 sleep 추가해보기
                         continue
@@ -164,7 +164,7 @@ class UDSSender:
             self.stack.process()
             if self.stack.available():
                 response = self.stack.recv(timeout=5)
-                if (len(response) >= 3) and (response[0] == 0x7f) and (response[2] == 0x78):
+                if (len(response) >= 3) and (response[0] == 0x7f) and ((response[2] == 0x78) or (response[2] == 0x21)):
                     start_time = time.time()
                     continue
                 
@@ -218,7 +218,7 @@ class UDSSender:
                     nrc = response[2]
                     print(f"[DEBUG] Received NRC: 0x{nrc:02X}")
                     
-                    if nrc == 0x78:  # RequestCorrectlyReceived-ResponsePending
+                    if nrc == 0x78 or nrc == 0x21:  # RequestCorrectlyReceived-ResponsePending
                         print("[DEBUG] Response pending (0x78), waiting...")
                         start_time = time.time()
                         continue
@@ -285,7 +285,7 @@ class UDSSender:
                 response = self.stack.recv(timeout=5)
                 print(f"[DEBUG] DTC clear response received: {response.hex()}")
                 
-                if (len(response) >= 3) and (response[0] == 0x7f):
+                if (len(response) >= 3) and ((response[2] == 0x78) or (response[2] == 0x21)):
                     nrc = response[2]
                     print(f"[DEBUG] Received NRC: 0x{nrc:02X}")
                     
@@ -339,7 +339,7 @@ class UDSSender:
   
             if self.stack.available():
                 response = self.stack.recv(timeout=5)
-                if (len(response) >= 3) and (response[0] == 0x7f) and (response[2] == 0x78):
+                if (len(response) >= 3) and (response[0] == 0x7f) and ((response[2] == 0x78) or (response[2] == 0x21)):
                     start_time = time.time()
                     continue
 
