@@ -310,6 +310,7 @@ class UDSSender:
                 if (len(response) >= 1) and (response[0] == 0x54):
                     print("[DEBUG] Positive response (0x54) received")
                     success = True
+                    time.sleep(0.1)
                     break
         
         return success, response
