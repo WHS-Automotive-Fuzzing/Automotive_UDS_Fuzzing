@@ -1,2 +1,12 @@
 # Virtual environment
 .venv/
+
+# txt file
+*.txt
+
+# csv file
+*.csv
+
+# debug file
+seend_fail_frame*.py
+add_fail.py

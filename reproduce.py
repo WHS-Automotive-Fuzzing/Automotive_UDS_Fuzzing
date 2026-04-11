@@ -6,6 +6,7 @@ from module.uds_isotp import UDSMessage, Response_ID
 from module.uds_send import UDSSender
 
 WAIT_RESPONSE_TIME = 0.2
+SAVE_INTERVAL = 10
 
 
 def get_output_path():
@@ -19,9 +20,6 @@ def get_output_path():
 
 
 def read_result_csv(path="result.csv"):
-    """result.csv에서 fail 레코드 읽기
-    format: idx(dec), fail_level(dec), udsid(hex), sid(hex), data(space-sep hex), response
-    """
     records = []
     with open(path, newline='') as f:
         reader = csv.reader(f)
@@ -43,9 +41,6 @@ def read_result_csv(path="result.csv"):
 
 
 def read_send_log_csv(path="send_log.csv"):
-    """send_log.csv에서 전체 전송 로그 읽기
-    format: idx(dec), udsid(hex), sid(hex), data(space-sep hex), response
-    """
     records = []
     with open(path, newline='') as f:
         reader = csv.reader(f)
@@ -53,7 +48,7 @@ def read_send_log_csv(path="send_log.csv"):
         for row in reader:
             if not row or len(row) < 3:
                 continue
-            if '---' in row[0]:  # Reset 마커 스킵
+            if '---' in row[0]:
                 continue
             try:
                 idx      = int(row[0].strip())
@@ -68,7 +63,6 @@ def read_send_log_csv(path="send_log.csv"):
 
 
 def send_context_message(bus, udsid, sid, data):
-    """컨텍스트 메시지 전송 — 진단모드 진입 + UDS 전송 + ECUReset (DTC 비교 없음)"""
     addr   = isotp.Address(isotp.AddressingMode.Normal_11bits, txid=udsid, rxid=Response_ID[udsid])
     stack  = isotp.CanStack(bus=bus, address=addr, params={"tx_padding": 0xFF})
     sender = UDSSender(stack)
@@ -79,18 +73,20 @@ def send_context_message(bus, udsid, sid, data):
 
 
 def run_fail_detection(bus, udsid, sid, data):
-    """기존 fuzzer와 동일한 fail 판정 — 진단모드 + DTC 비교 + ECUReset"""
     msg = UDSMessage(udsid, sid, data, 0, bus)
     fail_level = msg.CheckUDSMessage()
     return fail_level
 
 
-def write_results(output_path, results):
-    with open(output_path, 'w', newline='') as f:
+def save_intermediate(output_path, buffer, is_first):
+    """중간 저장 — 첫 저장은 헤더 포함(w), 이후는 append(a)"""
+    mode = 'w' if is_first else 'a'
+    with open(output_path, mode, newline='') as f:
         writer = csv.writer(f)
-        writer.writerow(['version', 'idx', 'udsid', 'sid', 'data', 'result'])
-        writer.writerows(results)
-    print(f"\n[저장 완료] {output_path}")
+        if is_first:
+            writer.writerow(['version', 'idx', 'udsid', 'sid', 'data', 'result'])
+        writer.writerows(buffer)
+    print(f"  [중간 저장] {len(buffer)}개 → {output_path}")
 
 
 # ──────────────────────────────────────────────
@@ -98,74 +94,100 @@ def write_results(output_path, results):
 # ──────────────────────────────────────────────
 def version1(bus, fail_records, repeat_count):
     output_path = get_output_path()
-    results = []
-    total = len(fail_records)
+    total    = len(fail_records)
+    buffer   = []
+    is_first = True
 
-    for i, (idx, _, udsid, sid, data) in enumerate(fail_records):
-        data_str = ' '.join(f"{b:02X}" for b in data)
-        print(f"\n[{i+1}/{total}] idx={idx}  0x{udsid:03X}  SID=0x{sid:02X}  [{data_str}]")
+    try:
+        for i, (idx, _, udsid, sid, data) in enumerate(fail_records):
+            data_str = ' '.join(f"{b:02X}" for b in data)
+            print(f"\n[{i+1}/{total}] idx={idx}  0x{udsid:03X}  SID=0x{sid:02X}  [{data_str}]")
 
-        fail_count = 0
-        for r in range(repeat_count):
-            fl = run_fail_detection(bus, udsid, sid, data)
-            if fl > 0:
-                fail_count += 1
-            print(f"  [{r+1}/{repeat_count}] fail_level={fl}  (누적 fail: {fail_count})")
+            fail_count = 0
+            for r in range(repeat_count):
+                fl = run_fail_detection(bus, udsid, sid, data)
+                if fl > 0:
+                    fail_count += 1
+                print(f"  [{r+1}/{repeat_count}] fail_level={fl}  (누적 fail: {fail_count})")
 
-        results.append(['1', idx, f"0x{udsid:03X}", f"0x{sid:02X}", data_str, f"{fail_count}/{repeat_count}"])
-        print(f"  => {fail_count}/{repeat_count}")
+            buffer.append(['1', idx, f"0x{udsid:03X}", f"0x{sid:02X}", data_str, f"{fail_count}/{repeat_count}"])
+            print(f"  => {fail_count}/{repeat_count}")
 
-    write_results(output_path, results)
+            if len(buffer) >= SAVE_INTERVAL:
+                save_intermediate(output_path, buffer, is_first)
+                is_first = False
+                buffer.clear()
+
+    except KeyboardInterrupt:
+        print("\n\n[중단] Ctrl+C 감지")
+
+    finally:
+        if buffer:
+            print(f"  버퍼에 {len(buffer)}개 남음 → 저장 중...")
+            save_intermediate(output_path, buffer, is_first)
+
+    print(f"\n[완료] {output_path}")
 
 
 # ──────────────────────────────────────────────
-# Version 2: 이전 컨텍스트 포함 N번 반복 (send_log 기반)
+# Version 2: 이전 컨텍스트 포함 N번 반복
 # ──────────────────────────────────────────────
 def version2(bus, fail_records, send_log_records, repeat_count, pre_count):
-    output_path = get_output_path()
-    results = []
-    total = len(fail_records)
+    output_path  = get_output_path()
+    total        = len(fail_records)
+    buffer       = []
+    is_first     = True
+    search_start = 0
 
-    search_start = 0  # fail idx는 순서대로이므로 이전 탐색 위치 이후부터 검색
+    try:
+        for i, (idx, _, udsid, sid, data) in enumerate(fail_records):
+            data_str = ' '.join(f"{b:02X}" for b in data)
+            print(f"\n[{i+1}/{total}] idx={idx}  0x{udsid:03X}  SID=0x{sid:02X}  [{data_str}]")
 
-    for i, (idx, _, udsid, sid, data) in enumerate(fail_records):
-        data_str = ' '.join(f"{b:02X}" for b in data)
-        print(f"\n[{i+1}/{total}] idx={idx}  0x{udsid:03X}  SID=0x{sid:02X}  [{data_str}]")
+            fail_pos = None
+            for j in range(search_start, len(send_log_records)):
+                if send_log_records[j][0] == idx:
+                    fail_pos = j
+                    search_start = j
+                    break
 
-        # send_log에서 fail 메시지 위치 탐색 (이전 탐색 이후부터)
-        fail_pos = None
-        for j in range(search_start, len(send_log_records)):
-            if send_log_records[j][0] == idx:
-                fail_pos = j
-                search_start = j  # 다음 fail은 여기 이후에 있음
-                break
+            if fail_pos is None:
+                print(f"  [WARN] idx={idx}를 send_log에서 찾을 수 없음, 스킵")
+                continue
 
-        if fail_pos is None:
-            print(f"  [WARN] idx={idx}를 send_log에서 찾을 수 없음, 스킵")
-            continue
+            pre_records = send_log_records[max(0, fail_pos - pre_count) : fail_pos]
+            print(f"  pre={len(pre_records)}개")
 
-        pre_records = send_log_records[max(0, fail_pos - pre_count) : fail_pos]
-        print(f"  pre={len(pre_records)}개")
+            fail_count = 0
+            for r in range(repeat_count):
+                print(f"  --- [{r+1}/{repeat_count}] ---")
+                for _, p_udsid, p_sid, p_data in pre_records:
+                    p_data_str = ' '.join(f"{b:02X}" for b in p_data)
+                    print(f"  [pre] 0x{p_udsid:03X}  SID=0x{p_sid:02X}  [{p_data_str}]")
+                    send_context_message(bus, p_udsid, p_sid, p_data)
 
-        fail_count = 0
-        for r in range(repeat_count):
-            print(f"  --- [{r+1}/{repeat_count}] ---")
+                fl = run_fail_detection(bus, udsid, sid, data)
+                if fl > 0:
+                    fail_count += 1
+                print(f"  [fail] fail_level={fl}  (누적 fail: {fail_count})")
 
-            # pre 메시지 전송 (컨텍스트 재현)
-            for _, p_udsid, p_sid, p_data in pre_records:
-                print(f"  [pre] 0x{p_udsid:03X}  SID=0x{p_sid:02X}")
-                send_context_message(bus, p_udsid, p_sid, p_data)
+            buffer.append(['2', idx, f"0x{udsid:03X}", f"0x{sid:02X}", data_str, f"{fail_count}/{repeat_count}"])
+            print(f"  => {fail_count}/{repeat_count}")
 
-            # fail 메시지: 기존 방식 그대로 fail detection + ECUReset
-            fl = run_fail_detection(bus, udsid, sid, data)
-            if fl > 0:
-                fail_count += 1
-            print(f"  [fail] fail_level={fl}  (누적 fail: {fail_count})")
+            if len(buffer) >= SAVE_INTERVAL:
+                save_intermediate(output_path, buffer, is_first)
+                is_first = False
+                buffer.clear()
 
-        results.append(['2', idx, f"0x{udsid:03X}", f"0x{sid:02X}", data_str, f"{fail_count}/{repeat_count}"])
-        print(f"  => {fail_count}/{repeat_count}")
+    except KeyboardInterrupt:
+        print("\n\n[중단] Ctrl+C 감지")
 
-    write_results(output_path, results)
+    finally:
+        if buffer:
+            print(f"  버퍼에 {len(buffer)}개 남음 → 저장 중...")
+            save_intermediate(output_path, buffer, is_first)
+
+    print(f"\n[완료] {output_path}")
 
 
 # ──────────────────────────────────────────────
@@ -222,6 +244,7 @@ def main():
             version2(bus, fail_records, send_log_records, repeat_count, pre_count)
     finally:
         bus.shutdown()
+        print("[BUS] can0 종료")
 
 
 if __name__ == "__main__":

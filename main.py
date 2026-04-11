@@ -9,7 +9,7 @@ from module.mutator import *
 from module.logger import *
 
 MAX_DEPTH = 10
-MAX_MSG_IDX = 30000  # Set the maximum message index
+MAX_MSG_IDX = 10000  # Set the maximum message index
 msg_idx=0
 tested_hashes = set()
 

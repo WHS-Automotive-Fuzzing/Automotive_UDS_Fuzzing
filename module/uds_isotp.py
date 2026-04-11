@@ -5,7 +5,7 @@ import time
 from module.logger import * 
 from module.uds_send import UDSSender
 
-WAIT_RESPONSE_TIME = 0.2  # seconds
+WAIT_RESPONSE_TIME = 5  # seconds
 RESET_WAIT_RESPONSE_TIME = 2
 RESET_SLEEP_TIME_DIFF_ID = 0.01
 RESET_SLEEP_TIME_SAME_ID = 0.05
@@ -90,13 +90,13 @@ class UDSMessage:
         return success
     
     def Set_Fail_Level(self, Alive):
-        if self.failed:
-            if not Alive:
+        if not Alive:
+            if self.failed:
                 self.fail_level = 3
             else:
                 self.fail_level = 2
         else:
-            if not Alive:
+            if self.failed:
                 self.fail_level = 1
             else:
                 self.fail_level = 0
@@ -109,7 +109,7 @@ class UDSMessage:
             print(f"[{self.sid}] DTC Clear Fail.")
             return
         
-        # Check DTC before sending message
+        #Check DTC before sending message
         success, First_DTC_reponse = sender.SendDTCRequest(timeout=WAIT_RESPONSE_TIME)
 
         if not success:
@@ -117,21 +117,20 @@ class UDSMessage:
             return
         
         # Send UDS message
-        success, _ = sender.SendUDSMessage(self.sid, self.data, timeout=WAIT_RESPONSE_TIME)
-        
+        success, test_response = sender.SendUDSMessage(self.sid, self.data, timeout=WAIT_RESPONSE_TIME)
+        print(f"[Debug] Test Response: {test_response.hex() if test_response else "None"}")
         # Check DTC after sending message
-        success, Second_DTC_reponse = sender.SendDTCRequest(timeout=WAIT_RESPONSE_TIME)
+        success, Second_DTC_reponse = sender.SendDTCRequest(timeout=WAIT_RESPONSE_TIME,trial=2)
 
         # if no/negative response or New DTC occur, then regard message as Fail Message
         if not success:
             print(f"[{self.sid}] Second DTC Request Fail.")
         
-        if not success or (First_DTC_reponse != Second_DTC_reponse):
+        elif (First_DTC_reponse != Second_DTC_reponse):
             print(f"[{self.sid}] Fail Detected: Different DTC Response.")
             self.failed = True
         
         self.Set_Fail_Level(self.Check_ECU_Alive(sender))
-
         return
 
 
@@ -173,7 +172,7 @@ class UDSMessage:
         sender.SendTesterPresent(retry_count=3)
         
         # Valid request check
-        success, response = sender.EnterDiagnosticSession(session_type=0x01, retry_count=1)
+        success, response = sender.EnterDiagnosticSession(session_type=0x01, retry_count=5)
         if not success:
             print(f"[{hex(self.udsid)}][{hex(self.sid)}] no response 10 01")
             self.failed = True

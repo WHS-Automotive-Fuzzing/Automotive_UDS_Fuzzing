@@ -2,7 +2,7 @@
 import isotp
 import time
 
-WAIT_RESPONSE_TIME = 0.2  # seconds
+WAIT_RESPONSE_TIME = 5  # seconds
 RESET_WAIT_RESPONSE_TIME = 2
 WAIT_SLEEP = 0.01 # Sleep for TesterPresent & DiagnosticSession
 
@@ -86,10 +86,12 @@ class UDSSender:
                         start_time = time.time()
                         # time.sleep(WAIT_SLEEP) # Reset 안되면 여기도 한면 sleep 추가해보기
                         continue
+                        
                     elif response[:len(expected_response)] == bytes(expected_response):
                         success = True
                         return success, response
                     else:
+                        print(f"[DEBUG] Diagnostic session entered: {response.hex() if response else 'None'}")
                         break
                 # time.sleep(WAIT_SLEEP) # Reset 안되면 여기도 한면 sleep 추가해보기
             retry += 1
@@ -159,6 +161,7 @@ class UDSSender:
         start_time = time.time()
         while True:
             if time.time() - start_time >= timeout:
+                print(time.time() - start_time)
                 break
             
             self.stack.process()
@@ -174,7 +177,7 @@ class UDSSender:
         
         return success, response
     
-    def SendDTCRequest(self, timeout=WAIT_RESPONSE_TIME, enter_diagnostic=True, session_type=0x03, retry_count=3, status_mask=0x20):
+    def SendDTCRequest(self, timeout=WAIT_RESPONSE_TIME, enter_diagnostic=True, session_type=0x03, retry_count=3, status_mask=0x20, trial = 1):
         """
         Send DTC Read request (0x19 0x02 [status_mask])
         
@@ -191,9 +194,18 @@ class UDSSender:
         # 진단 세션 진입
         if enter_diagnostic:
             print(f"[DEBUG] Entering diagnostic session (type: 0x{session_type:02X})...")
+            if trial==2:
+                success, diag_resp = self.SendTesterPresent()
+                if not success:
+                    print(f"[DEBUG] Failed to TestPresent: {diag_resp.hex() if diag_resp else 'None'}")
+                success, diag_resp = self.EnterDiagnosticSession(0x01, retry_count)
+                if not success:
+                    print("[ERROR] Failed to enter diagnostic session 0x10 01 for DTC request")
+
             success, diag_resp = self.EnterDiagnosticSession(session_type, retry_count)
             if not success:
                 print("[ERROR] Failed to enter diagnostic session for DTC request")
+                print(f"[DEBUG] Response was:{diag_resp.hex() if diag_resp else 'None'}")
                 return False, None
             print(f"[DEBUG] Diagnostic session entered: {diag_resp.hex() if diag_resp else 'None'}")
         
